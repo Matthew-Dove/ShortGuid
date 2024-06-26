@@ -1,9 +1,9 @@
-﻿using System.Text;
-using System;
+﻿using SrtGuid.Internal;
 using System.Buffers.Text;
-using ShortGuid.Internal;
+using System.Text;
+using System;
 
-namespace ShortGuid.Core
+namespace SrtGuid.Core
 {
     public class SuperGuid
     {

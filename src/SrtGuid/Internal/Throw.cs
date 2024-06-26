@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace ShortGuid.Internal
+namespace SrtGuid.Internal
 {
     // Jit will keep these methods cold, until they are used (as long as they only throw exceptions as a single instruction).
     internal static class Throw

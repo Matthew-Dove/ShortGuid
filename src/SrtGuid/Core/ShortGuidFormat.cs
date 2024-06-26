@@ -1,4 +1,4 @@
-﻿namespace ShortGuid.Core
+﻿namespace SrtGuid.Core
 {
     /// <summary>Options for controlling the string value of ShortGuid.</summary>
     public enum ShortGuidFormat

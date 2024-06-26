@@ -1,12 +1,12 @@
 ﻿using System;
 
-namespace ShortGuid.Core
+namespace SrtGuid.Core
 {
     /// <summary>
     /// A globally unique identifier (GUID) with a shorter string representation.
     /// The resulting string is a url safe, base64 encoded, with an optional flags value (up to 6 bits).
     /// </summary>
-	public readonly struct SG : IEquatable<SG>
+	public readonly struct ShortGuid : IEquatable<ShortGuid>
     {
         /// <summary>The underlying Guid for the ShortGuid.</summary>
         public Guid Guid { get; }
@@ -18,10 +18,10 @@ namespace ShortGuid.Core
         public string Value { get; }
 
         /// <summary>Creates a ShortGuid, generating a new Guid.</summary>
-        public SG() : this(Guid.NewGuid()) { }
+        public ShortGuid() : this(Guid.NewGuid()) { }
 
         /// <summary>Creates a ShortGuid, from a base64 encoded, url safe string.</summary>
-        public SG(string value)
+        public ShortGuid(string value)
         {
             if (value?.Length != 22) throw new ArgumentOutOfRangeException(nameof(value), "Value must contain exactly 22 characters!");
             Value = value;
@@ -29,7 +29,7 @@ namespace ShortGuid.Core
         }
 
         /// <summary>Creates a ShortGuid, from an existing Guid.</summary>
-        public SG(Guid guid)
+        public ShortGuid(Guid guid)
         {
             // TODO: Check if guid is empty.
             Value = Encode(guid);
@@ -43,7 +43,7 @@ namespace ShortGuid.Core
             value = Value;
         }
 
-        public static SG NewGuid() => new SG(Guid.NewGuid());
+        public static ShortGuid NewGuid() => new ShortGuid(Guid.NewGuid());
 
         public static string Encode(string value) => Encode(new Guid(value));
 
@@ -64,12 +64,12 @@ namespace ShortGuid.Core
             };
         }
 
-        public override bool Equals(object obj) => obj != null && obj is SG sg && Equals(sg);
-        public bool Equals(SG other) => Guid.Equals(other.Guid);
+        public override bool Equals(object obj) => obj != null && obj is ShortGuid sg && Equals(sg);
+        public bool Equals(ShortGuid other) => Guid.Equals(other.Guid);
 
         public override int GetHashCode() => Guid.GetHashCode();
 
-        public static bool operator ==(SG x, SG y) => x.Guid.Equals(y.Guid);
-        public static bool operator !=(SG x, SG y) => !(x == y);
+        public static bool operator ==(ShortGuid x, ShortGuid y) => x.Guid.Equals(y.Guid);
+        public static bool operator !=(ShortGuid x, ShortGuid y) => !(x == y);
     }
 }

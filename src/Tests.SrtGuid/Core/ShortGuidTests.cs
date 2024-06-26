@@ -1,6 +1,6 @@
-﻿using ShortGuid.Core;
+﻿using SrtGuid.Core;
 
-namespace Tests.ShortGuid.Core
+namespace Tests.SrtGuid.Core
 {
     public class ShortGuidTests
     {
