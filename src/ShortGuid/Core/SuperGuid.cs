@@ -1,39 +1,108 @@
 ﻿using System.Text;
 using System;
 using System.Buffers.Text;
+using ShortGuid.Internal;
 
 namespace ShortGuid.Core
 {
     public class SuperGuid
     {
-        public string GetSuperGuid() => ZeroAllocationShortGuid();
+        // Url targets, and their safe replacements.
+        private const byte FORWARD_SLASH = 47; // Not url safe.
+        private const byte PLUS = 43; // Url safe.
+        private const byte MINUS = 45; // Not url safe.
+        private const byte UNDERSCORE = 95; // Url safe.
 
-        private static string ZeroAllocationShortGuid()
+        // GUID conversions.
+        private const int GUID_LENGTH = 16; // The number of bytes in a GUID.
+        private const int BASE64_LENGTH = 22; // The length of the GUID bytes in base64 format, with the padding dropped.
+        private const int BASE64_PADDING_LENGTH = 24; // The value's length with the base64 padding suffix included i.e. "==".
+
+        // Bit masks
+        private const byte VERSION_CLEAR_MASK = 0b00001111; // Clear the first 4 bits of a byte.
+        private const byte VARIANT_CLEAR_MASK = 0b00111111; // Clear the first 2 bits of a byte.
+        private const byte VERSION_EXTRACT_MASK = 0b11110000; // Get the first 4 bits of a byte.
+        private const byte VARIANT_EXTRACT_MASK = 0b00001100; // Get positions 5, and 6 of a byte.
+
+        private const byte PADDING = 61; // The equals sign i.e. "=".
+        private const int MAX_FLAGS = 63; // The upper limit we can store in the flags value, 4 bits from version, and 2 bits from variant (2^6).
+
+        public string GetSuperGuid(int flags = 0)
         {
-            const byte FORWARD_SLASH = 47;
-            const byte PLUS = 43;
-            const byte MINUS = 45;
-            const byte UNDERSCORE = 95;
+            if (flags < 0 || flags > MAX_FLAGS) Throw.ArgumentOutOfRangeException(nameof(flags), flags, "Value must exist between [0, 63] (inclusive).");
+            return CreateShortGuid((byte)flags);
+        }
 
+        private static string CreateShortGuid(byte flags)
+        {
             // New guid bytes.
-            Span<byte> guidBytes = stackalloc byte[16];
+            Span<byte> guidBytes = stackalloc byte[GUID_LENGTH];
             Guid.NewGuid().TryWriteBytes(guidBytes);
 
+            // TODO: Replace version, and variant bits.
+            string[] xxx = new string[guidBytes.Length];
+            for (int i = 0; i < guidBytes.Length; i++)
+            {
+                xxx[i] = new StringBuilder().AppendFormat("{0:X2}", guidBytes[i]).ToString();
+            }
+
+            var strVersion = xxx[7];
+            var strVariant = xxx[8];
+
+            var version = guidBytes[7]; // The first 4 bits of the 8th byte in a V4 Guid are: 0100 (or 4 in hex).
+            var variant = guidBytes[8]; // The first 2 bits of the 9th byte in a V4 Guid are: 10 (or between 8, and b in hex - depending on the last 2 bits).
+
+            var clearedVersion = (byte)(version & VERSION_CLEAR_MASK);
+            var versionFlags = (byte)(flags & VERSION_EXTRACT_MASK);
+            var versionResult = (byte)(clearedVersion | versionFlags);
+
+            var x = "Source Byte: " + Convert.ToString(flags, 2).PadLeft(8, '0');
+            var y = "Target Byte: " + Convert.ToString(version, 2).PadLeft(8, '0');
+            var z = "Result Byte: " + Convert.ToString(versionResult, 2).PadLeft(8, '0');
+
             // Convert bytes to base64.
-            Span<byte> encodedBytes = stackalloc byte[24];
+            Span<byte> encodedBytes = stackalloc byte[BASE64_PADDING_LENGTH];
             Base64.EncodeToUtf8(guidBytes, encodedBytes, out _, out _);
 
             // Url encode the base64.
-            for (int i = 0; i < 22; i++)
+            for (int i = 0; i < BASE64_LENGTH; i++)
             {
-                var b = encodedBytes[i];
-                if (b == FORWARD_SLASH) encodedBytes[i] = MINUS; // Replace("/", "-") 
-                else if (b == PLUS) encodedBytes[i] = UNDERSCORE; // Replace("+", "_")
+                if (encodedBytes[i] == FORWARD_SLASH) encodedBytes[i] = MINUS; // Replace("/", "-") 
+                else if (encodedBytes[i] == PLUS) encodedBytes[i] = UNDERSCORE; // Replace("+", "_")
             }
 
-            // Get the bytes in string format, drop the end padding.
-            string base64 = Encoding.UTF8.GetString(encodedBytes.Slice(0, 22));
-            return base64;
+            // Get the bytes in string format, trim the end padding.
+            return Encoding.UTF8.GetString(encodedBytes.Slice(0, BASE64_LENGTH));
+        }
+
+        public Guid ConvertToGuid(string superGuid)
+        {
+            if (superGuid?.Length != BASE64_LENGTH) Throw.ArgumentOutOfRangeException(nameof(superGuid), superGuid?.Length ?? 0, "Length must be exactly 22.");
+
+            // String to UTF-8 bytes.
+            var utf8Bytes = Encoding.UTF8.GetBytes(superGuid);
+            Array.Resize(ref utf8Bytes, BASE64_PADDING_LENGTH);
+            Span<byte> encodedBytes = utf8Bytes;
+
+            // Decode the url-safe characters to standard Base64.
+            for (int i = 0; i < encodedBytes.Length; i++)
+            {
+                if (encodedBytes[i] == MINUS) encodedBytes[i] = FORWARD_SLASH; // Replace("-", "/") 
+                else if (encodedBytes[i] == UNDERSCORE) encodedBytes[i] = PLUS; // Replace("_", "+")
+            }
+
+            // Add the padding back.
+            encodedBytes[BASE64_PADDING_LENGTH - 2] = PADDING;
+            encodedBytes[BASE64_PADDING_LENGTH - 1] = PADDING;
+
+            // UTF-8 bytes into Base64.
+            Span<byte> guidBytes = stackalloc byte[GUID_LENGTH];
+            Base64.DecodeFromUtf8(encodedBytes, guidBytes, out _, out _);
+
+            // TODO: Replace version, and variant bits.
+
+            // Convert the bytes into a GUID.
+            return new Guid(guidBytes);
         }
     }
 }
