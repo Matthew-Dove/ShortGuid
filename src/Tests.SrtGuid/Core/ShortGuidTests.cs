@@ -4,28 +4,9 @@ namespace Tests.SrtGuid.Core
 {
     public class ShortGuidTests
     {
-        private readonly SuperGuid _guid;
-
-        public ShortGuidTests()
-        {
-            _guid = new SuperGuid();
-        }
-
-        [Fact]
-        public void Test0()
-        {
-            // New ShortGuid(guid) | ShortGuid(string).
-            // Deconstructer
-            var guid1 = Guid.Empty;
-            var guid2 = Guid.Parse("");
-            var guid3 = Guid.TryParse("", out Guid result);
-            var guid4 = Guid.NewGuid();
-        }
-
         // https://www.binaryhexconverter.com/decimal-to-binary-converter
         // https://byjus.com/maths/hexadecimal-number-system/#:~:text=The%20hexadecimal%20number%20system%20is,digit%20represents%20a%20decimal%20value.
         // https://tonystrains.com/download/DCC_DecBiHex_Chart.pdf
-        // https://chatgpt.com/c/0aa1c85b-1638-414e-99ed-e31021808464
 
         /**
          * 1) Find the 4 bits of the version flag (13th hex digit).
@@ -37,9 +18,9 @@ namespace Tests.SrtGuid.Core
         [Fact]
         public void Test1()
         {
-            var guid = _guid.GetSuperGuid(63);
+            var sg = new ShortGuid(63);
 
-            var sss = _guid.ConvertToGuid(guid);
+            var guid = sg.Value.ToGuid();
         }
 
         // 2^6 = 64 (Just make this an int 0 - 64?)

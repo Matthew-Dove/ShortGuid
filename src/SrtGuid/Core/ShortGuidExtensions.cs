@@ -5,12 +5,12 @@ using System;
 
 namespace SrtGuid.Core
 {
-    public class SuperGuid
+    public static class ShortGuidExtensions
     {
         // Url targets, and their safe replacements.
         private const byte FORWARD_SLASH = 47; // Not url safe.
-        private const byte PLUS = 43; // Url safe.
-        private const byte MINUS = 45; // Not url safe.
+        private const byte PLUS = 43; // Not url safe.
+        private const byte MINUS = 45; // Url safe.
         private const byte UNDERSCORE = 95; // Url safe.
 
         // GUID conversions.
@@ -25,23 +25,39 @@ namespace SrtGuid.Core
         private const byte MASK_FIVE_AND_SIX = 0b00110000; // Get positions 5, and 6 of a byte (reading from the lowest bit - right to left).
         private const byte MASK_FIRST_FOUR = 0b11110000; // Get the first 4 bits in a byte.
         private const byte MASK_FIRST_TWO = 0b11000000; // Get the first 2 bits in a byte.
-        private const byte MASK_VERSION = 0b01000000; // The first 4 bits of the version byte is: "0100".
-        private const byte MASK_VARIANT = 0b10000000; // The first 2 bits of the variant byte is: "10".
+        private const byte MASK_VERSION = 0b01000000; // The first 4 bits of the version byte are: "0100".
+        private const byte MASK_VARIANT = 0b10000000; // The first 2 bits of the variant byte are: "10".
 
         // Other.
-        private const int MAX_FLAGS = 63; // The upper limit we can store in the flags value, 4 bits from version, and 2 bits from variant (2^6).
+        private const int FLAGS_MIN = 0; // The lower limit for the flags value.
+        private const int FLAGS_MAX = 63; // The upper limit we can store in the flags value - 4 bits from version, and 2 bits from variant i.e. 2^6.
+        private const byte FLAGS_DEFAULT = 0; // The default value for flags, when not explicitly set.
 
-        public string GetSuperGuid(int flags = 0)
+        /// <summary>Creates a ShortGuid using the provided Guid, and Flags.</summary>
+        public static string ToShortGuid(this Guid guid, int flags)
         {
-            if (flags < 0 || flags > MAX_FLAGS) Throw.ArgumentOutOfRangeException(nameof(flags), flags, "Value must exist between [0, 63] (inclusive).");
-            return CreateShortGuid((byte)flags);
+            if (Guid.Empty.Equals(guid)) Throw.ArgumentOutOfRangeException(nameof(guid), guid, "The guid cannot be empty.");
+            if (flags < FLAGS_MIN || flags > FLAGS_MAX) Throw.ArgumentOutOfRangeException(nameof(flags), flags, "Value must exist between [0, 63] (inclusive).");
+            return CreateShortGuid(guid, (byte)flags);
         }
 
-        private static string CreateShortGuid(byte flags)
+        /// <summary>Creates a ShortGuid using the provided Guid.</summary>
+        public static string ToShortGuid(this Guid guid)
         {
-            // New guid bytes.
+            return ToShortGuid(guid, FLAGS_DEFAULT);
+        }
+
+        /// <summary>Creates a ShortGuid using the provided Guid, and Flags.</summary>
+        public static string ToShortGuid<TFlags>(this Guid guid, TFlags flags) where TFlags : Enum, IConvertible
+        {
+            return ToShortGuid(guid, flags.ToInt32(null));
+        }
+
+        private static string CreateShortGuid(Guid guid, byte flags)
+        {
+            // Create new guid bytes.
             Span<byte> guidBytes = stackalloc byte[GUID_LENGTH];
-            Guid.NewGuid().TryWriteBytes(guidBytes);
+            guid.TryWriteBytes(guidBytes);
 
             // Pack 6 bits from flags (0 - 63), into the version, and variant guid bytes.
             var version = guidBytes[7]; // The first 4 bits of the 8th byte in a V4 Guid are: 0100 (or 4 in hex).
@@ -78,12 +94,17 @@ namespace SrtGuid.Core
             return Encoding.UTF8.GetString(encodedBytes.Slice(0, BASE64_LENGTH));
         }
 
-        public Guid ConvertToGuid(string superGuid)
+        /// <summary>Extracts the Guid, and Flags from the ShortGuid.</summary>
+        public static (Guid Guid, int Flags) ToGuid(this string shortGuid)
         {
-            if (superGuid?.Length != BASE64_LENGTH) Throw.ArgumentOutOfRangeException(nameof(superGuid), superGuid?.Length ?? 0, "Length must be exactly 22.");
+            if (shortGuid?.Length != BASE64_LENGTH) Throw.ArgumentOutOfRangeException(nameof(shortGuid), shortGuid?.Length ?? 0, "Length must be exactly 22.");
+            return ExtractGuid(shortGuid);
+        }
 
+        private static (Guid Guid, int Flags) ExtractGuid(string shortGuid)
+        {
             // String to UTF-8 bytes.
-            var utf8Bytes = Encoding.UTF8.GetBytes(superGuid);
+            var utf8Bytes = Encoding.UTF8.GetBytes(shortGuid);
             Array.Resize(ref utf8Bytes, BASE64_PADDING_LENGTH);
             Span<byte> encodedBytes = utf8Bytes;
 
@@ -125,7 +146,9 @@ namespace SrtGuid.Core
             guidBytes[8] = variantResult;
 
             // Convert the bytes into a GUID.
-            return new Guid(guidBytes);
+            var guid = new Guid(guidBytes);
+            if (ShortGuid.Empty.Equals(guid)) Throw.ArgumentOutOfRangeException(nameof(shortGuid), guid, "ShortGuid cannot be empty.");
+            return (guid, flags);
         }
     }
 }
