@@ -17,6 +17,7 @@ namespace ShortGuid.Core
         private const int GUID_LENGTH = 16; // The number of bytes in a GUID.
         private const int BASE64_LENGTH = 22; // The length of the GUID bytes in base64 format, with the padding dropped.
         private const int BASE64_PADDING_LENGTH = 24; // The value's length with the base64 padding suffix included i.e. "==".
+        private const byte PADDING = 61; // The equals sign i.e. "=".
 
         // Bit masks: (0 - 63) or (0b00000000 - 0b00111111).
         private const byte VERSION_CLEAR_MASK = 0b00001111; // Clear the version data (first 4 bits of the 8th byte).
@@ -24,8 +25,7 @@ namespace ShortGuid.Core
         private const byte VERSION_EXTRACT_MASK = 0b00001111; // Get the last 4 bits of the flag byte.
         private const byte VARIANT_EXTRACT_MASK = 0b00110000; // Get positions 5, and 6 of a byte (reading from the lowest bit - right to left).
 
-        // Other
-        private const byte PADDING = 61; // The equals sign i.e. "=".
+        // Constraints.
         private const int MAX_FLAGS = 63; // The upper limit we can store in the flags value, 4 bits from version, and 2 bits from variant (2^6).
 
         public string GetSuperGuid(int flags = 0)
@@ -40,6 +40,7 @@ namespace ShortGuid.Core
             Span<byte> guidBytes = stackalloc byte[GUID_LENGTH];
             Guid.NewGuid().TryWriteBytes(guidBytes);
 
+            // Pack 6 bits from flags (0 - 63), into the version, and variant guid bytes.
             var version = guidBytes[7]; // The first 4 bits of the 8th byte in a V4 Guid are: 0100 (or 4 in hex).
             var variant = guidBytes[8]; // The first 2 bits of the 9th byte in a V4 Guid are: 10 (or between 8, and b in hex - depending on the last 2 bits).
 
@@ -49,17 +50,20 @@ namespace ShortGuid.Core
             var versionBitShift = (byte)(versionFlags << 4); // Shift the flag bits all the way to the left.
             var versionResult = (byte)(versionLast4 | versionBitShift); // Put the flag bits into the first 4 bits of the version byte.
 
-
             // Pack 2 bits from flags into the variant byte.
+            var variantLast6 = (byte)(variant & VARIANT_CLEAR_MASK); // Get the last 6 bits of the variant byte.
+            var variantFlags = (byte)(flags & VARIANT_EXTRACT_MASK); // Get the last 5th, and 5th bits of the flags byte (reading right to left).
+            var variantBitShift = (byte)(variantFlags << 2); // Shift the flag bits all the way to the left.
+            var variantResult = (byte)(variantLast6 | variantBitShift); // Put the flag bits into the first 4 bits of the version byte.
 
-
-
-            var x = "Source Byte: " + Convert.ToString(flags, 2).PadLeft(8, '0');
-
-
-
+            // Replace the version, and variant guid bytes with the packed flag values.
             guidBytes[7] = versionResult;
-            // guidBytes[8] = variantResult;
+            guidBytes[8] = variantResult;
+
+
+
+            var a = "Flags: " + Convert.ToString(flags, 2).PadLeft(8, '0');
+
 
 
             // Convert bytes to base64.
