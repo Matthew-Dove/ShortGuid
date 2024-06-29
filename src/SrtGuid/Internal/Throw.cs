@@ -6,5 +6,7 @@ namespace SrtGuid.Internal
     internal static class Throw
     {
         public static void ArgumentOutOfRangeException(string name, object value, string message) => throw new ArgumentOutOfRangeException(name, value, message);
+
+        public static T ArgumentOutOfRangeException<T>(string name, object value, string message) => throw new ArgumentOutOfRangeException(name, value, message);
     }
 }

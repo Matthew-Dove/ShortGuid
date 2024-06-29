@@ -6,31 +6,6 @@ namespace Tests.SrtGuid.Core
     {
         private const int SG_VALUE_LEN = 22; // ShortGuids will always be the same length (in their string format), as Guids are always 16 bytes.
 
-        // https://www.binaryhexconverter.com/decimal-to-binary-converter
-        // https://byjus.com/maths/hexadecimal-number-system/#:~:text=The%20hexadecimal%20number%20system%20is,digit%20represents%20a%20decimal%20value.
-        // https://tonystrains.com/download/DCC_DecBiHex_Chart.pdf
-
-        // 2^6 = 64 (Just make this an int 0 - 64?)
-        private enum Values : byte
-        {
-            A = 0,
-            B = 1,
-            C = 2,
-            D = 3,
-            E = 4,
-            F = 5,
-            G = 6
-        }
-
-        [Flags]
-        private enum Flags
-        {
-            None = 0,
-            A = 1,
-            B = 2,
-            C = 4
-        }
-
         [Fact]
         public void Create_WithDefaults()
         {
@@ -61,7 +36,7 @@ namespace Tests.SrtGuid.Core
         {
             var flags = 42;
 
-            var sg1 = new ShortGuid(42);
+            var sg1 = new ShortGuid(flags);
             var sg2 = new ShortGuid(sg1.Value);
 
             Assert.NotEqual(Guid.Empty, sg2.Guid);
@@ -76,7 +51,7 @@ namespace Tests.SrtGuid.Core
             var guid = Guid.NewGuid();
             var flags = 42;
 
-            var sg1 = new ShortGuid(guid, 42);
+            var sg1 = new ShortGuid(guid, flags);
             var sg2 = new ShortGuid(sg1.Value);
 
             Assert.Equal(guid, sg2.Guid);
@@ -110,7 +85,7 @@ namespace Tests.SrtGuid.Core
             var guid = Guid.NewGuid();
             var flags = 42;
 
-            var sg1 = new ShortGuid(guid, 42);
+            var sg1 = new ShortGuid(guid, flags);
             var sg2 = ShortGuid.Parse(sg1.Value);
 
             Assert.Equal(guid, sg2.Guid);
@@ -123,7 +98,7 @@ namespace Tests.SrtGuid.Core
             var guid = Guid.NewGuid();
             var flags = 42;
 
-            var sg1 = new ShortGuid(guid, 42);
+            var sg1 = new ShortGuid(guid, flags);
             var isValid = ShortGuid.TryParse(sg1.Value, out ShortGuid sg2);
 
             Assert.True(isValid);
@@ -173,6 +148,53 @@ namespace Tests.SrtGuid.Core
             Assert.Equal(guid.ToString("B"), sg.ToString(ShortGuidFormat.B));
             Assert.Equal(guid.ToString("P"), sg.ToString(ShortGuidFormat.P));
             Assert.Equal(guid.ToString("X"), sg.ToString(ShortGuidFormat.X));
+        }
+
+        public enum Values : byte
+        {
+            A = 0,
+            Z = 63
+        }
+
+        [Flags]
+        public enum Flags
+        {
+            A = 0,
+            B = 1,
+            C = 2,
+            D = 4,
+            E = 8,
+            F = 16,
+            G = 32
+        }
+
+        [Theory]
+        [InlineData(Flags.A)]
+        [InlineData(Flags.G)]
+        [InlineData(Flags.A | Flags.B | Flags.C | Flags.D | Flags.E | Flags.F | Flags.G)]
+        public void ShortGuidEnum_Flags(Flags flags)
+        {
+            var sg1 = new ShortGuid<Flags>(flags);
+            var sg2 = new ShortGuid<Flags>(sg1.Value);
+
+            Assert.Equal(flags, sg2.Flags);
+            Assert.NotEqual(Guid.Empty, sg2.Guid);
+            Assert.NotEqual(ShortGuid.Empty, sg2.Guid);
+            Assert.Equal(SG_VALUE_LEN, sg2.Value.Length);
+        }
+
+        [Theory]
+        [InlineData(Values.A)]
+        [InlineData(Values.Z)]
+        public void ShortGuidEnum_Values(Values values)
+        {
+            var sg1 = new ShortGuid<Values>(values);
+            var sg2 = new ShortGuid<Values>(sg1.Value);
+
+            Assert.Equal(values, sg2.Flags);
+            Assert.NotEqual(Guid.Empty, sg2.Guid);
+            Assert.NotEqual(ShortGuid.Empty, sg2.Guid);
+            Assert.Equal(SG_VALUE_LEN, sg2.Value.Length);
         }
     }
 }

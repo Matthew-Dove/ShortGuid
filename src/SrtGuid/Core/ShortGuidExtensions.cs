@@ -146,11 +146,51 @@ namespace SrtGuid.Core
             return true;
         }
 
+        public static bool TryParseToGuid<TFlags>(this string shortGuid, out (Guid Guid, TFlags Flags) guid) where TFlags : Enum, IConvertible
+        {
+            guid = (Guid.Empty, default(TFlags));
+            if (TryParseToGuid(shortGuid, out var result))
+            {
+                var flags = ConvertToFlagsEnum<TFlags>(result.Flags);
+                guid = (result.Guid, flags);
+                return true;
+            }
+            return false;
+        }
+
         /// <summary>Extracts the Guid, and Flags from the ShortGuid.</summary>
         public static (Guid Guid, int Flags) ToGuid(this string shortGuid)
         {
             if (shortGuid?.Length != BASE64_LENGTH) Throw.ArgumentOutOfRangeException(nameof(shortGuid), shortGuid?.Length ?? 0, "Length must be exactly 22.");
             return ExtractGuid(shortGuid);
+        }
+
+        /// <summary>Extracts the Guid, and Flags from the ShortGuid.</summary>
+        public static (Guid Guid, TFlags Flags) ToGuid<TFlags>(this string shortGuid) where TFlags : Enum, IConvertible
+        {
+            var (g, f) = ToGuid(shortGuid);
+            var flags = ConvertToFlagsEnum<TFlags>(f);
+            return (g, flags);
+        }
+
+        /// <summary>
+        /// Flags only exists the range of 0 - 63, but the underlying enum implementation could be any numeric data type.
+        /// <para>i.e. byte, sbyte, short, ushort, int, uint, long, or ulong.</para>
+        /// </summary>
+        private static TFlags ConvertToFlagsEnum<TFlags>(int flags) where TFlags : Enum, IConvertible
+        {
+            return default(TFlags).GetTypeCode() switch
+            {
+                TypeCode.Byte => (TFlags)(object)(byte)flags,
+                TypeCode.Int16 => (TFlags)(object)(short)flags,
+                TypeCode.Int32 => (TFlags)(object)flags,
+                TypeCode.Int64 => (TFlags)(object)(long)flags,
+                TypeCode.SByte => (TFlags)(object)(sbyte)flags,
+                TypeCode.UInt16 => (TFlags)(object)(ushort)flags,
+                TypeCode.UInt32 => (TFlags)(object)(uint)flags,
+                TypeCode.UInt64 => (TFlags)(object)(ulong)flags,
+                _ => Throw.ArgumentOutOfRangeException<TFlags>(nameof(flags), flags, $"Unable to convert underlying flags type: {default(TFlags).GetTypeCode()}.")
+            };
         }
 
         /**
