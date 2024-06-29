@@ -28,7 +28,7 @@ namespace SrtGuid.Core
         private const byte MASK_VERSION = 0b01000000; // The first 4 bits of the version byte are: "0100".
         private const byte MASK_VARIANT = 0b10000000; // The first 2 bits of the variant byte are: "10".
 
-        // Other.
+        // Flag constraints.
         private const int FLAGS_MIN = 0; // The lower limit for the flags value.
         private const int FLAGS_MAX = 63; // The upper limit we can store in the flags value - 4 bits from version, and 2 bits from variant i.e. 2^6.
         private const byte FLAGS_DEFAULT = 0; // The default value for flags, when not explicitly set.
@@ -37,11 +37,12 @@ namespace SrtGuid.Core
         public static string ToShortGuid(this Guid guid, int flags)
         {
             if (Guid.Empty.Equals(guid)) Throw.ArgumentOutOfRangeException(nameof(guid), guid, "The guid cannot be empty.");
+            if (ShortGuid.Empty.Equals(guid)) Throw.ArgumentOutOfRangeException(nameof(guid), guid, "The guid cannot be an empty ShortGuid.");
             if (flags < FLAGS_MIN || flags > FLAGS_MAX) Throw.ArgumentOutOfRangeException(nameof(flags), flags, "Value must exist between [0, 63] (inclusive).");
             return CreateShortGuid(guid, (byte)flags);
         }
 
-        /// <summary>Creates a ShortGuid using the provided Guid.</summary>
+        /// <summary>Creates a ShortGuid using the provided Guid, with default flags.</summary>
         public static string ToShortGuid(this Guid guid)
         {
             return ToShortGuid(guid, FLAGS_DEFAULT);
@@ -52,6 +53,15 @@ namespace SrtGuid.Core
         {
             return ToShortGuid(guid, flags.ToInt32(null));
         }
+
+        /**
+         * 1) Find the 4 bits of the version flag (13th hex digit).
+         * 2) Find the 2 bits (10XX) of the variant flag (17th hex digit).
+         * 3) Replace the 6 available bits with a provided flags value.
+         * 4) Encode the guid (and flags), into a base64, url-safe string.
+        **/
+
+        // Example version (4), and variant (8) positions in a hex formatted guid: "00000000-0000-4000-8000-000000000000".
 
         private static string CreateShortGuid(Guid guid, byte flags)
         {
@@ -95,11 +105,60 @@ namespace SrtGuid.Core
         }
 
         /// <summary>Extracts the Guid, and Flags from the ShortGuid.</summary>
+        public static bool TryParseToGuid(this string shortGuid, out (Guid Guid, int Flags) guid)
+        {
+            guid = (Guid.Empty, default(int));
+
+            // Assert the length is correct.
+            if ((shortGuid?.Length ?? 0) != 22) return false;
+
+            /**
+             * Base64 encoded url characters:
+             * A to Z
+             * a to z
+             * 0 to 9
+             * - & _ (minus and underscore)
+            **/
+
+            // Assert the characters are in the url-safe, base64 range.
+            // We can skip mod, and padding checks; since they aren't part of a ShortGuid's format.
+
+            foreach (char c in shortGuid)
+            {
+                if (!(
+                    (c >= 'A' && c <= 'Z') || // A to Z
+                    (c >= 'a' && c <= 'z') || // a to z
+                    (c >= '0' && c <= '9') || // 0 to 9
+                    (c == '-') || // minus
+                    (c == '_') // underscore
+                ))
+                {
+                    return false;
+                }
+            }
+
+            // If we get this far, the only likely remaining error would be having an empty ShortGuid value (which would have to be crafted maliciously).
+            // We need to parse it to find that out though.
+
+            try { guid = shortGuid.ToGuid(); }
+            catch { return false; }
+
+            return true;
+        }
+
+        /// <summary>Extracts the Guid, and Flags from the ShortGuid.</summary>
         public static (Guid Guid, int Flags) ToGuid(this string shortGuid)
         {
             if (shortGuid?.Length != BASE64_LENGTH) Throw.ArgumentOutOfRangeException(nameof(shortGuid), shortGuid?.Length ?? 0, "Length must be exactly 22.");
             return ExtractGuid(shortGuid);
         }
+
+        /**
+         * 1) Decode the base64, url-safe string back into their original bytes.
+         * 2) Extract the 4 bits of the flags value from the version byte.
+         * 3) Extract the 2 bits of the flags value from the variant byte.
+         * 4) Combine the flags data back into a single byte, and re-create the guid.
+        **/
 
         private static (Guid Guid, int Flags) ExtractGuid(string shortGuid)
         {

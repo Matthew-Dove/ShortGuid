@@ -4,9 +4,9 @@ namespace SrtGuid.Core
 {
     /// <summary>
     /// A globally unique identifier (GUID) with a shorter string representation.
-    /// The resulting string is a url safe, base64 encoded, with an optional flags value (up to 6 bits).
+    /// <para>The resulting string is url safe, base64 encoded, with an optional flags value (up to 6 bits).</para>
     /// </summary>
-	public readonly struct ShortGuid : IEquatable<ShortGuid>
+	public readonly struct ShortGuid : IEquatable<ShortGuid>, IEquatable<Guid>
     {
         /// <summary>
         /// The "empty" instance of a ShortGuid contains the version, and variant markers in their respective bytes.
@@ -14,8 +14,8 @@ namespace SrtGuid.Core
         /// </summary>
         public static readonly Guid Empty = EmptyShortGuid();
 
-        // A ShortGuid instance to use when initialization fails.
-        public static readonly ShortGuid _default = new ShortGuid(Guid.Empty, default(int), default(string));
+        /// <summary>A ShortGuid instance to use when initialization fails.</summary>
+        private static readonly ShortGuid _default = new ShortGuid(Guid.Empty, default(int), default(string));
 
         /// <summary>The underlying Guid for the ShortGuid.</summary>
         public Guid Guid { get; }
@@ -80,8 +80,20 @@ namespace SrtGuid.Core
             return new Guid(emptyBytes);
         }
 
+        /// <summary>Creates a ShortGuid, from a base64 encoded, url safe string.</summary>
+        public static ShortGuid NewGuid(string value) => new ShortGuid(value);
+
         /// <summary>Creates a ShortGuid, generating a new Guid.</summary>
-        public static ShortGuid NewGuid() => new ShortGuid(Guid.NewGuid());
+        public static ShortGuid NewGuid() => new ShortGuid();
+
+        /// <summary>Creates a ShortGuid, from an existing Guid.</summary>
+        public static ShortGuid NewGuid(Guid guid) => new ShortGuid(guid);
+
+        /// <summary>Creates a ShortGuid, generating a new Guid, with flags.</summary>
+        public static ShortGuid NewGuid(int flags) => new ShortGuid(flags);
+
+        /// <summary>Creates a ShortGuid, from an existing Guid, with flags.</summary>
+        public static ShortGuid NewGuid(Guid guid, int flags) => new ShortGuid(guid, flags);
 
         /// <summary>Parses a ShortGuid value.</summary>
         public static ShortGuid Parse(string value) => new ShortGuid(value);
@@ -90,42 +102,12 @@ namespace SrtGuid.Core
         public static bool TryParse(string value, out ShortGuid shortGuid)
         {
             shortGuid = _default;
-
-            // Assert the length is correct.
-            if ((value?.Length ?? 0) != 22) return false;
-
-            /**
-             * Base64 encoded url characters:
-             * A to Z
-             * a to z
-             * 0 to 9
-             * - & _ (minus and underscore)
-            **/
-
-            // Assert the characters are in the url-safe, base64 range.
-            // We can skip mod, and padding checks; since they aren't part of a ShortGuid's format.
-
-            foreach (char c in value)
+            if (value.TryParseToGuid(out (Guid Guid, int Flags) guid))
             {
-                if (!(
-                    (c >= 'A' && c <= 'Z') || // A to Z
-                    (c >= 'a' && c <= 'z') || // a to z
-                    (c >= '0' && c <= '9') || // 0 to 9
-                    (c == '-') || // minus
-                    (c == '_') // underscore
-                ))
-                {
-                    return false;
-                }
+                shortGuid = new ShortGuid(guid.Guid, guid.Flags, value);
+                return true;
             }
-
-            // If we get this far, the only likely remaining error would be having an empty ShortGuid value (which would have to be crafted maliciously).
-            // We need to parse it to find that out though.
-
-            try { shortGuid = Parse(value); }
-            catch { return false; }
-
-            return true;
+            return false;
         }
 
         public override string ToString() => Value;
@@ -135,18 +117,30 @@ namespace SrtGuid.Core
             return format switch
             {
                 ShortGuidFormat.ShortGuid => Value,
-                ShortGuidFormat.D => Guid.ToString("D", null),
                 ShortGuidFormat.N => Guid.ToString("N", null),
+                ShortGuidFormat.D => Guid.ToString("D", null),
+                ShortGuidFormat.B => Guid.ToString("B", null),
+                ShortGuidFormat.P => Guid.ToString("P", null),
+                ShortGuidFormat.X => Guid.ToString("X", null),
                 _ => Value
             };
         }
 
-        public override bool Equals(object obj) => obj != null && obj is ShortGuid sg && Equals(sg);
+        // The equals check is done only on the Guid, and does not include the Flags value.
+        // This is because ShortGuid is a unique Id first, with optional flags second, as a nice to have.
+        public override bool Equals(object obj) => obj != null && (obj is ShortGuid sg && Equals(sg) || obj is Guid g && Equals(g));
         public bool Equals(ShortGuid other) => Guid.Equals(other.Guid);
+        public bool Equals(Guid other) => Guid.Equals(other);
 
         public override int GetHashCode() => Guid.GetHashCode();
 
         public static bool operator ==(ShortGuid x, ShortGuid y) => x.Guid.Equals(y.Guid);
         public static bool operator !=(ShortGuid x, ShortGuid y) => !(x == y);
+
+        public static bool operator ==(ShortGuid x, Guid y) => x.Guid.Equals(y);
+        public static bool operator !=(ShortGuid x, Guid y) => !(x == y);
+
+        public static bool operator ==(Guid x, ShortGuid y) => y.Guid.Equals(x);
+        public static bool operator !=(Guid x, ShortGuid y) => !(x == y);
     }
 }
