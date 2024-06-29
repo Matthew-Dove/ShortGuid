@@ -37,10 +37,11 @@ public enum Values
     A = 0,
     B = 1,
     ...
-    Y = 62
+    Y = 62,
     Z = 63
 }
-var sg2 = new ShortGuid<Values>(Values.Z);
+var valueFlags = Values.Z;
+var sg2 = new ShortGuid<Values>(valueFlags);
 
 // You could use a flags enum with up to 7 combined values.
 [Flags]
@@ -55,7 +56,7 @@ public enum Flags
     G = 32
 }
 var combinedFlags = Flags.A | Flags.B | Flags.C | Flags.D | Flags.E | Flags.F | Flags.G;
-var sg3 = new ShortGuid<Flags>(flags);
+var sg3 = new ShortGuid<Flags>(combinedFlags);
 ```
 
 ### Converting between Guids and Short Guids
