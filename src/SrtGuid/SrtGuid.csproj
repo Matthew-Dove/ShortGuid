@@ -1,13 +1,13 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFramework>netstandard2.1</TargetFramework>
+		<TargetFramework>net10.0</TargetFramework>
 		<LangVersion>latestMajor</LangVersion>
 		<Nullable>disable</Nullable>
 		<GenerateDocumentationFile>True</GenerateDocumentationFile>
 		<PackageId>md.shortguid</PackageId>
 		<Title>Short Guid</Title>
-		<Version>1.0.0</Version>
+		<Version>2.0.0</Version>
 		<Authors>Matthew Dove</Authors>
 		<Description>A V4 GUID represented in the form of a short(er), base64-encoded, url-safe, string.
 With the option to replace version, and variant data for custom flags.
@@ -27,7 +27,7 @@ ShortGuids are url safe.</Description>
 		<RepositoryUrl>https://github.com/Matthew-Dove/ShortGuid</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
 		<PackageTags>Guid;Uuid;ShortGuid</PackageTags>
-		<PackageReleaseNotes>Created a ShortGuid type, with the options of using a plain V4 GUID, or one with custom flags.</PackageReleaseNotes>
+		<PackageReleaseNotes>Updated framework to dotnet 10.</PackageReleaseNotes>
 		<PackageOutputPath>..//../nupkg</PackageOutputPath>
 		<PackageLicenseFile>LICENSE</PackageLicenseFile>
 		<IncludeSymbols>True</IncludeSymbols>

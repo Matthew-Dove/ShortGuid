@@ -87,3 +87,7 @@ Assert.Equal(flagsIn, flagsOut);
 ## 1.0.0
 
 * `ShortGuid` type, with the options of using a plain V4 GUID, or one with custom flags.  
+
+## 2.0.0
+
+* Updated framework to dotnet 10.
