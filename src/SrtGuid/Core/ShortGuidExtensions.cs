@@ -1,7 +1,9 @@
 ﻿using SrtGuid.Internal;
-using System.Buffers.Text;
-using System.Text;
 using System;
+using System.Buffers.Text;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+using System.Text;
 
 namespace SrtGuid.Core
 {
@@ -101,7 +103,9 @@ namespace SrtGuid.Core
             }
 
             // Get the bytes in string format, trim the end padding.
-            return Encoding.UTF8.GetString(encodedBytes.Slice(0, BASE64_LENGTH));
+            return string.Create(BASE64_LENGTH, encodedBytes, static (span, data) => {
+                for (int i = 0; i < span.Length; i++) span[i] = (char)data[i];
+            });
         }
 
         /// <summary>Extracts the Guid, and Flags from the ShortGuid.</summary>
@@ -179,18 +183,30 @@ namespace SrtGuid.Core
         /// </summary>
         private static TFlags ConvertToFlagsEnum<TFlags>(int flags) where TFlags : Enum, IConvertible
         {
-            return default(TFlags).GetTypeCode() switch
+            if (Unsafe.SizeOf<TFlags>() == 1)
             {
-                TypeCode.Byte => (TFlags)(object)(byte)flags,
-                TypeCode.Int16 => (TFlags)(object)(short)flags,
-                TypeCode.Int32 => (TFlags)(object)flags,
-                TypeCode.Int64 => (TFlags)(object)(long)flags,
-                TypeCode.SByte => (TFlags)(object)(sbyte)flags,
-                TypeCode.UInt16 => (TFlags)(object)(ushort)flags,
-                TypeCode.UInt32 => (TFlags)(object)(uint)flags,
-                TypeCode.UInt64 => (TFlags)(object)(ulong)flags,
-                _ => Throw.ArgumentOutOfRangeException<TFlags>(nameof(flags), flags, $"Unable to convert underlying flags type: {default(TFlags).GetTypeCode()}.")
-            };
+                byte val = (byte)flags;
+                return Unsafe.As<byte, TFlags>(ref val);
+            }
+            else if (Unsafe.SizeOf<TFlags>() == 2)
+            {
+                short val = (short)flags;
+                return Unsafe.As<short, TFlags>(ref val);
+            }
+            else if (Unsafe.SizeOf<TFlags>() == 4)
+            {
+                int val = flags;
+                return Unsafe.As<int, TFlags>(ref val);
+            }
+            else if (Unsafe.SizeOf<TFlags>() == 8)
+            {
+                long val = flags;
+                return Unsafe.As<long, TFlags>(ref val);
+            }
+            else
+            {
+                return Throw.ArgumentOutOfRangeException<TFlags>(nameof(flags), flags, $"Unable to convert underlying flags type: {default(TFlags).GetTypeCode()}.");
+            }
         }
 
         /**
@@ -203,9 +219,9 @@ namespace SrtGuid.Core
         private static (Guid Guid, int Flags) ExtractGuid(string shortGuid)
         {
             // String to UTF-8 bytes.
-            var utf8Bytes = Encoding.UTF8.GetBytes(shortGuid);
-            Array.Resize(ref utf8Bytes, BASE64_PADDING_LENGTH);
-            Span<byte> encodedBytes = utf8Bytes;
+            Span<byte> encodedBytes = stackalloc byte[BASE64_PADDING_LENGTH];
+            byte[] utf8Bytes = Encoding.UTF8.GetBytes(shortGuid);
+            _ = Encoding.UTF8.GetBytes(shortGuid, encodedBytes);
 
             // Decode the url-safe characters to standard Base64.
             for (int i = 0; i < encodedBytes.Length; i++)
@@ -245,7 +261,7 @@ namespace SrtGuid.Core
             guidBytes[8] = variantResult;
 
             // Convert the bytes into a GUID.
-            var guid = new Guid(guidBytes);
+            var guid = MemoryMarshal.Read<Guid>(guidBytes);
             if (ShortGuid.Empty.Equals(guid)) Throw.ArgumentOutOfRangeException(nameof(shortGuid), guid, "ShortGuid cannot be empty.");
             return (guid, flags);
         }
