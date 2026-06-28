@@ -60,6 +60,24 @@ namespace Tests.SrtGuid.Core
         }
 
         [Fact]
+        public void Create_WithEmptyVersion()
+        {
+            var guid = Guid.Empty;
+
+            Assert.Throws<ArgumentOutOfRangeException>(() => new ShortGuid(guid));
+        }
+
+        [Fact]
+        public void Create_WithCorrectVersion()
+        {
+            var guid = Guid.NewGuid();
+            var sg = new ShortGuid(guid);
+
+            Assert.Equal(4, guid.Version);
+            Assert.Equal(guid.Version, sg.Guid.Version);
+        }
+
+        [Fact]
         public void Can_Deconstruct_And_Reconstruct()
         {
             var guid = Guid.NewGuid();
@@ -253,6 +271,34 @@ namespace Tests.SrtGuid.Core
         }
 
         [Fact]
+        public void Create_V7_WithCorrectVersion()
+        {
+            var guid = Guid.CreateVersion7();
+            var sg = new ShortGuid(guid);
+
+            Assert.Equal(7, guid.Version);
+            Assert.Equal(guid.Version, sg.Guid.Version);
+        }
+
+        [Fact]
+        public void Create_V7_WithCorrectVersion_Direct_Pass()
+        {
+            var guid = Guid.CreateVersion7();
+            var sg = ShortGuid.CreateVersion7(guid);
+
+            Assert.Equal(7, guid.Version);
+            Assert.Equal(guid.Version, sg.Guid.Version);
+        }
+
+        [Fact]
+        public void Create_V7_WithCorrectVersion_Direct_Fail()
+        {
+            var guid = Guid.NewGuid();
+
+            Assert.Throws<ArgumentOutOfRangeException>(() => ShortGuid.CreateVersion7(guid));
+        }
+
+        [Fact]
         public void Can_Deconstruct_And_Reconstruct_V7()
         {
             var guid = Guid.CreateVersion7();
@@ -375,13 +421,6 @@ namespace Tests.SrtGuid.Core
             Assert.NotEqual(ShortGuid.EmptyVersion7, sg2.Guid);
             Assert.Equal(SG_VALUE_LEN, sg2.Value.Length);
         }
-
-
-        // TODO: Assert V4, and V7 varients.
-
-
-
-
 
         // TODO: Extract out the time for a V7 ShortGuid.
         // V7: 019f0d88-39b5-778f-91b6-5dbb61d82c7d

@@ -39,7 +39,8 @@ namespace SrtGuid.Core
         /// <summary>Creates a ShortGuid using the provided Guid, and Flags.</summary>
         public static string ToShortGuid(this Guid guid, int flags)
         {
-            if (guid.IsEmpty()) Throw.ArgumentOutOfRangeException(nameof(guid), guid, "The guid cannot be an empty ShortGuid.");
+            if (guid.IsEmpty()) Throw.ArgumentOutOfRangeException(nameof(guid), guid, "The guid cannot be empty.");
+            if (guid.Version != 4 && guid.Version != 7) Throw.ArgumentOutOfRangeException(nameof(guid), guid, "Guid must be version 4, or 7.");
             if (flags < FLAGS_MIN || flags > FLAGS_MAX) Throw.ArgumentOutOfRangeException(nameof(flags), flags, "Value must exist between [0, 63] (inclusive).");
             return CreateShortGuid(guid, (byte)flags);
         }

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using SrtGuid.Internal;
+using System;
 
 namespace SrtGuid.Core
 {
@@ -141,7 +142,7 @@ namespace SrtGuid.Core
         public static ShortGuid CreateVersion7() => new ShortGuid(Guid.CreateVersion7());
 
         /// <summary>Creates a ShortGuid, with a Version 7 Guid.</summary>
-        public static ShortGuid CreateVersion7(Guid guid) => new ShortGuid(guid);
+        public static ShortGuid CreateVersion7(Guid guid) => CreateVersion7(guid, default(int));
 
         /// <summary>Creates a ShortGuid, generating a new Version 7 Guid with a Unix Epoch timestamp.</summary>
         public static ShortGuid CreateVersion7(DateTimeOffset timestamp) => new ShortGuid(Guid.CreateVersion7(timestamp));
@@ -150,7 +151,11 @@ namespace SrtGuid.Core
         public static ShortGuid CreateVersion7(int flags) => new ShortGuid(Guid.CreateVersion7(), flags);
 
         /// <summary>Creates a ShortGuid, generating a new Version 7 Guid, with a Unix Epoch timestamp and flags.</summary>
-        public static ShortGuid CreateVersion7(Guid guid, int flags) => new ShortGuid(guid, flags);
+        public static ShortGuid CreateVersion7(Guid guid, int flags)
+        {
+            if (guid.Version != 7) Throw.ArgumentOutOfRangeException(nameof(guid), guid, "Guid must be version 7.");
+            return new ShortGuid(guid, flags);
+        }
 
         /// <summary>Creates a ShortGuid, generating a new Version 7 Guid, with a Unix Epoch timestamp and flags.</summary>
         public static ShortGuid CreateVersion7(DateTimeOffset timestamp, int flags) => new ShortGuid(Guid.CreateVersion7(timestamp), flags);
