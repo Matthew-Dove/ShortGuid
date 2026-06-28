@@ -110,15 +110,25 @@ namespace SrtGuid.Core
         }
 
         /// <summary>Extracts the Guid, and Flags from the ShortGuid in a safe way.</summary>
-        public static bool TryParseToGuid(this string shortGuid, out (Guid Guid, int Flags) guid) => TryParseToGuid(shortGuid, MASK_VERSION_4, out guid);
-
-        /// <summary>Extracts the Guid, and Flags from the ShortGuid in a safe way.</summary>
-        public static bool TryParseToGuidVersion7(this string shortGuid, out (Guid Guid, int Flags) guid) => TryParseToGuid(shortGuid, MASK_VERSION_7, out guid);
-
-        /// <summary>Extracts the Guid, and Flags from the ShortGuid in a safe way.</summary>
-        private static bool TryParseToGuid(string shortGuid, byte maskVersion, out (Guid Guid, int Flags) guid)
+        public static bool TryParseToGuid(this string shortGuid, out (Guid Guid, int Flags) guid)
         {
-            guid = (Guid.Empty, default(int));
+            var result = TryParseToGuid(shortGuid, MASK_VERSION_4, out (Guid g, int f, DateTimeOffset? t) uuid);
+            guid = result ? (uuid.g, uuid.f) : (Guid.Empty, default(int));
+            return result;
+        }
+
+        /// <summary>Extracts the Guid, and Flags from the ShortGuid in a safe way.</summary>
+        public static bool TryParseToGuidVersion7(this string shortGuid, out (Guid Guid, int Flags, DateTimeOffset Timestamp) guid)
+        {
+            var result = TryParseToGuid(shortGuid, MASK_VERSION_7, out (Guid g, int f, DateTimeOffset? t) uuid);
+            guid = result ? (uuid.g, uuid.f, uuid.t.Value) : (Guid.Empty, default(int), default(DateTimeOffset));
+            return result;
+        }
+
+        /// <summary>Extracts the Guid, and Flags from the ShortGuid in a safe way.</summary>
+        private static bool TryParseToGuid(string shortGuid, byte maskVersion, out (Guid Guid, int Flags, DateTimeOffset? Timestamp) guid)
+        {
+            guid = (Guid.Empty, default(int), default(DateTimeOffset?));
 
             // Assert the length is correct.
             if ((shortGuid?.Length ?? 0) != 22) return false;
@@ -158,43 +168,69 @@ namespace SrtGuid.Core
         }
 
         /// <summary>Extracts the Guid, and Flags from the ShortGuid in a safe way.</summary>
-        public static bool TryParseToGuid<TFlags>(this string shortGuid, out (Guid Guid, TFlags Flags) guid) where TFlags : Enum, IConvertible => TryParseToGuid<TFlags>(shortGuid, MASK_VERSION_4, out guid);
-
-        /// <summary>Extracts the Guid, and Flags from the ShortGuid in a safe way.</summary>
-        public static bool TryParseToGuidVersion7<TFlags>(this string shortGuid, out (Guid Guid, TFlags Flags) guid) where TFlags : Enum, IConvertible => TryParseToGuid<TFlags>(shortGuid, MASK_VERSION_7, out guid);
-
-        /// <summary>Extracts the Guid, and Flags from the ShortGuid in a safe way.</summary>
-        private static bool TryParseToGuid<TFlags>(string shortGuid, byte maskVersion, out (Guid Guid, TFlags Flags) guid) where TFlags : Enum, IConvertible
+        public static bool TryParseToGuid<TFlags>(this string shortGuid, out (Guid Guid, TFlags Flags) guid) where TFlags : Enum, IConvertible
         {
-            guid = (Guid.Empty, default(TFlags));
+            var result = TryParseToGuid<TFlags>(shortGuid, MASK_VERSION_4, out (Guid g, TFlags f, DateTimeOffset? t) uuid);
+            guid = result ? (uuid.g, uuid.f) : (Guid.Empty, default(TFlags));
+            return result;
+        }
+
+        /// <summary>Extracts the Guid, and Flags from the ShortGuid in a safe way.</summary>
+        public static bool TryParseToGuidVersion7<TFlags>(this string shortGuid, out (Guid Guid, TFlags Flags, DateTimeOffset Timestamp) guid) where TFlags : Enum, IConvertible
+        {
+            var result = TryParseToGuid<TFlags>(shortGuid, MASK_VERSION_7, out (Guid g, TFlags f, DateTimeOffset? t) uuid);
+            guid = result ? (uuid.g, uuid.f, uuid.t.Value) : (Guid.Empty, default(TFlags), default(DateTimeOffset));
+            return result;
+        }
+
+        /// <summary>Extracts the Guid, and Flags from the ShortGuid in a safe way.</summary>
+        private static bool TryParseToGuid<TFlags>(string shortGuid, byte maskVersion, out (Guid Guid, TFlags Flags, DateTimeOffset? Timestamp) guid) where TFlags : Enum, IConvertible
+        {
+            guid = (Guid.Empty, default(TFlags), default(DateTimeOffset?));
             if (TryParseToGuid(shortGuid, maskVersion, out var result))
             {
                 var flags = ConvertToFlagsEnum<TFlags>(result.Flags);
-                guid = (result.Guid, flags);
+                guid = (result.Guid, flags, result.Timestamp);
                 return true;
             }
             return false;
         }
 
         /// <summary>Extracts the Guid, and Flags from the ShortGuid.</summary>
-        public static (Guid Guid, TFlags Flags) ToGuid<TFlags>(this string shortGuid) where TFlags : Enum, IConvertible => ToGuid<TFlags>(shortGuid, MASK_VERSION_4);
-
-        /// <summary>Extracts the Guid, and Flags from the ShortGuid.</summary>
-        public static (Guid Guid, TFlags Flags) ToGuidVersion7<TFlags>(this string shortGuid) where TFlags : Enum, IConvertible => ToGuid<TFlags>(shortGuid, MASK_VERSION_7);
-
-        /// <summary>Extracts the Guid, and Flags from the ShortGuid.</summary>
-        private static (Guid Guid, TFlags Flags) ToGuid<TFlags>(string shortGuid, byte maskVersion) where TFlags : Enum, IConvertible
+        public static (Guid Guid, TFlags Flags) ToGuid<TFlags>(this string shortGuid) where TFlags : Enum, IConvertible
         {
-            var (g, f) = ExtractGuid(shortGuid, maskVersion);
-            var flags = ConvertToFlagsEnum<TFlags>(f);
-            return (g, flags);
+            var (g, f, _) = ToGuid<TFlags>(shortGuid, MASK_VERSION_4);
+            return (g, f);
         }
 
         /// <summary>Extracts the Guid, and Flags from the ShortGuid.</summary>
-        public static (Guid Guid, int Flags) ToGuid(this string shortGuid) => ExtractGuid(shortGuid, MASK_VERSION_4);
+        public static (Guid Guid, TFlags Flags, DateTimeOffset Timestamp) ToGuidVersion7<TFlags>(this string shortGuid) where TFlags : Enum, IConvertible
+        {
+            var (g, f, t) = ToGuid<TFlags>(shortGuid, MASK_VERSION_7);
+            return (g, f, t.Value);
+        }
 
         /// <summary>Extracts the Guid, and Flags from the ShortGuid.</summary>
-        public static (Guid Guid, int Flags) ToGuidVersion7(this string shortGuid) => ExtractGuid(shortGuid, MASK_VERSION_7);
+        private static (Guid Guid, TFlags Flags, DateTimeOffset? Timestamp) ToGuid<TFlags>(string shortGuid, byte maskVersion) where TFlags : Enum, IConvertible
+        {
+            var (g, f, t) = ExtractGuid(shortGuid, maskVersion);
+            var flags = ConvertToFlagsEnum<TFlags>(f);
+            return (g, flags, t);
+        }
+
+        /// <summary>Extracts the Guid, and Flags from the ShortGuid.</summary>
+        public static (Guid Guid, int Flags) ToGuid(this string shortGuid)
+        {
+            var (g, f, _) = ExtractGuid(shortGuid, MASK_VERSION_4);
+            return (g, f);
+        }
+
+        /// <summary>Extracts the Guid, and Flags from the ShortGuid.</summary>
+        public static (Guid Guid, int Flags, DateTimeOffset Timestamp) ToGuidVersion7(this string shortGuid)
+        {
+            var (g, f, t) = ExtractGuid(shortGuid, MASK_VERSION_7);
+            return (g, f, t.Value);
+        }
 
         /// <summary>Flags only exists the range of 0 - 63, but the underlying enum implementation could be any numeric data type.</summary>
         private static TFlags ConvertToFlagsEnum<TFlags>(int flags) where TFlags : Enum, IConvertible
@@ -232,7 +268,7 @@ namespace SrtGuid.Core
          * 4) Combine the flags data back into a single byte, and re-create the guid.
         **/
 
-        private static (Guid Guid, int Flags) ExtractGuid(string shortGuid, byte maskVersion)
+        private static (Guid Guid, int Flags, DateTimeOffset? Timestamp) ExtractGuid(string shortGuid, byte maskVersion)
         {
             if (shortGuid?.Length != BASE64_LENGTH) Throw.ArgumentOutOfRangeException(nameof(shortGuid), shortGuid?.Length ?? 0, "Length must be exactly 22.");
 
@@ -255,6 +291,22 @@ namespace SrtGuid.Core
             // UTF-8 bytes into Base64.
             Span<byte> guidBytes = stackalloc byte[GUID_LENGTH];
             Base64.DecodeFromUtf8(encodedBytes, guidBytes, out _, out _);
+
+            // Extract the first 48 bits of the guid as a timestamp, only if it's version 7.
+            DateTimeOffset? timestamp = null;
+            if (maskVersion == MASK_VERSION_7)
+            {
+                var unixMilliseconds =
+                    ((long)guidBytes[3] << 40) |
+                    ((long)guidBytes[2] << 32) |
+                    ((long)guidBytes[1] << 24) |
+                    ((long)guidBytes[0] << 16) |
+                    ((long)guidBytes[5] << 8) |
+                    guidBytes[4]
+                ;
+
+                timestamp = DateTimeOffset.FromUnixTimeMilliseconds(unixMilliseconds);
+            }
 
             // Extract flags from the version, and variant guid bytes.
             var version = guidBytes[7];
@@ -281,7 +333,7 @@ namespace SrtGuid.Core
             // Convert the bytes into a GUID.
             var guid = MemoryMarshal.Read<Guid>(guidBytes);
             if (guid.IsEmpty()) Throw.ArgumentOutOfRangeException(nameof(shortGuid), guid, "ShortGuid cannot be empty.");
-            return (guid, flags);
+            return (guid, flags, timestamp);
         }
 
         /// <summary>Set the Guid's version to 7.</summary>

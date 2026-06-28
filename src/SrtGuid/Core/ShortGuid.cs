@@ -22,7 +22,7 @@ namespace SrtGuid.Core
         public static readonly Guid EmptyVersion7 = EmptyShortGuid(ShortGuidVersion.Version7);
 
         /// <summary>A ShortGuid instance to use when initialization fails.</summary>
-        private static readonly ShortGuid _default = new ShortGuid(Guid.Empty, default(int), default(string));
+        private static readonly ShortGuid _default = new ShortGuid(Guid.Empty, default(int), default(DateTimeOffset?), default(string));
 
         /// <summary>The underlying Guid for the ShortGuid.</summary>
         public Guid Guid { get; }
@@ -42,17 +42,21 @@ namespace SrtGuid.Core
         /// <summary>Creates a ShortGuid, from a base64 encoded, url safe string.</summary>
         public ShortGuid(string value, ShortGuidVersion version)
         {
-            var sg = version == ShortGuidVersion.Version7 ? value.ToGuidVersion7() : value.ToGuid();
+            (Guid Guid, int Flags, DateTimeOffset? Timestamp) sg;
+            if (version == ShortGuidVersion.Version7) sg = value.ToGuidVersion7();
+            else { (Guid g, int f) uuid = value.ToGuid(); sg = (uuid.g, uuid.f, default(DateTimeOffset?)); }
+
             Guid = sg.Guid;
             Flags = sg.Flags;
-            Timestamp = version == ShortGuidVersion.Version7 ? sg.Guid.GetTimestampFromVersion7() : null;
+            Timestamp = sg.Timestamp;
             Value = value;
         }
 
-        private ShortGuid(Guid guid, int flags, string value)
+        private ShortGuid(Guid guid, int flags, DateTimeOffset? timestamp, string value)
         {
             Guid = guid;
             Flags = flags;
+            Timestamp = timestamp;
             Value = value;
         }
 
@@ -71,7 +75,7 @@ namespace SrtGuid.Core
             var sg = guid.ToShortGuid(flags);
             Guid = guid;
             Flags = flags;
-            Timestamp = guid.Version == 7 ? guid.GetTimestampFromVersion7() : null;
+            Timestamp = guid.Version == 7 ? guid.GetTimestampFromVersion7() : default(DateTimeOffset?);
             Value = sg;
         }
 
@@ -80,6 +84,15 @@ namespace SrtGuid.Core
         {
             guid = Guid;
             flags = Flags;
+            value = Value;
+        }
+
+        /// <summary>Get out the Guid, flags, and timestamp contained in the ShortGuid.</summary>
+        public void Deconstruct(out Guid guid, out int flags, out DateTimeOffset? timestamp, out string value)
+        {
+            guid = Guid;
+            flags = Flags;
+            timestamp = Timestamp;
             value = Value;
         }
 
@@ -125,7 +138,7 @@ namespace SrtGuid.Core
             shortGuid = _default;
             if (value.TryParseToGuid(out (Guid Guid, int Flags) guid))
             {
-                shortGuid = new ShortGuid(guid.Guid, guid.Flags, value);
+                shortGuid = new ShortGuid(guid.Guid, guid.Flags, default(DateTimeOffset?), value);
                 return true;
             }
             return false;
@@ -135,9 +148,9 @@ namespace SrtGuid.Core
         public static bool TryParseVersion7(string value, out ShortGuid shortGuid)
         {
             shortGuid = _default;
-            if (value.TryParseToGuidVersion7(out (Guid Guid, int Flags) guid))
+            if (value.TryParseToGuidVersion7(out (Guid Guid, int Flags, DateTimeOffset Timestamp) guid))
             {
-                shortGuid = new ShortGuid(guid.Guid, guid.Flags, value);
+                shortGuid = new ShortGuid(guid.Guid, guid.Flags, guid.Timestamp, value);
                 return true;
             }
             return false;
@@ -169,7 +182,7 @@ namespace SrtGuid.Core
         public static ShortGuid CreateVersion7(string value)
         {
             var sg = value.ToGuidVersion7();
-            return new ShortGuid(sg.Guid, sg.Flags, value);
+            return new ShortGuid(sg.Guid, sg.Flags, sg.Timestamp, value);
         }
 
         public override string ToString() => Value;

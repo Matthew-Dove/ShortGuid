@@ -22,13 +22,16 @@ namespace SrtGuid.Core
         public static readonly Guid EmptyVersion7 = ShortGuid.EmptyVersion7;
 
         /// <summary>A ShortGuid instance to use when initialization fails.</summary>
-        private static readonly ShortGuid<TFlags> _default = new ShortGuid<TFlags>(Guid.Empty, default(TFlags), default(string));
+        private static readonly ShortGuid<TFlags> _default = new ShortGuid<TFlags>(Guid.Empty, default(TFlags), default(DateTimeOffset?), default(string));
 
         /// <summary>The underlying Guid for the ShortGuid.</summary>
         public Guid Guid { get; }
 
         /// <summary>The 6 bits available to set on the underlying Guid (0 - 63).</summary>
         public TFlags Flags { get; }
+
+        /// <summary>The DateTimeOffset the guid was created with, only valid for version 7 Guids.</summary>
+        public DateTimeOffset? Timestamp { get; }
 
         /// <summary>The ShortGuid - a url safe, base64 encoded Guid.</summary>
         public string Value { get; }
@@ -39,13 +42,17 @@ namespace SrtGuid.Core
         /// <summary>Creates a ShortGuid, from a base64 encoded, url safe string.</summary>
         public ShortGuid(string value, ShortGuidVersion version)
         {
-            var sg = version == ShortGuidVersion.Version7 ? value.ToGuidVersion7<TFlags>() : value.ToGuid<TFlags>();
+            (Guid Guid, TFlags Flags, DateTimeOffset? Timestamp) sg;
+            if (version == ShortGuidVersion.Version7) sg = value.ToGuidVersion7<TFlags>();
+            else { (Guid g, TFlags f) uuid = value.ToGuid<TFlags>(); sg = (uuid.g, uuid.f, default(DateTimeOffset?)); }
+
             Guid = sg.Guid;
             Flags = sg.Flags;
+            Timestamp = sg.Timestamp;
             Value = value;
         }
 
-        private ShortGuid(Guid guid, TFlags flags, string value)
+        private ShortGuid(Guid guid, TFlags flags, DateTimeOffset? timestamp, string value)
         {
             Guid = guid;
             Flags = flags;
@@ -67,6 +74,7 @@ namespace SrtGuid.Core
             var sg = guid.ToShortGuid(flags);
             Guid = guid;
             Flags = flags;
+            Timestamp = guid.Version == 7 ? guid.GetTimestampFromVersion7() : default(DateTimeOffset?);
             Value = sg;
         }
 
@@ -75,6 +83,15 @@ namespace SrtGuid.Core
         {
             guid = Guid;
             flags = Flags;
+            value = Value;
+        }
+
+        /// <summary>Get out the Guid, flags, and timestamp contained in the ShortGuid.</summary>
+        public void Deconstruct(out Guid guid, out TFlags flags, out DateTimeOffset? timestamp, out string value)
+        {
+            guid = Guid;
+            flags = Flags;
+            timestamp = Timestamp;
             value = Value;
         }
 
@@ -105,7 +122,7 @@ namespace SrtGuid.Core
             shortGuid = _default;
             if (value.TryParseToGuid<TFlags>(out var guid))
             {
-                shortGuid = new ShortGuid<TFlags>(guid.Guid, guid.Flags, value);
+                shortGuid = new ShortGuid<TFlags>(guid.Guid, guid.Flags, default(DateTimeOffset?), value);
                 return true;
             }
             return false;
@@ -115,9 +132,9 @@ namespace SrtGuid.Core
         public static bool TryParseVersion7(string value, out ShortGuid<TFlags> shortGuid)
         {
             shortGuid = _default;
-            if (value.TryParseToGuidVersion7<TFlags>(out (Guid Guid, TFlags Flags) guid))
+            if (value.TryParseToGuidVersion7<TFlags>(out (Guid Guid, TFlags Flags, DateTimeOffset Timestamp) guid))
             {
-                shortGuid = new ShortGuid<TFlags>(guid.Guid, guid.Flags, value);
+                shortGuid = new ShortGuid<TFlags>(guid.Guid, guid.Flags, guid.Timestamp, value);
                 return true;
             }
             return false;
@@ -149,7 +166,7 @@ namespace SrtGuid.Core
         public static ShortGuid<TFlags> CreateVersion7(string value)
         {
             var sg = value.ToGuidVersion7<TFlags>();
-            return new ShortGuid<TFlags>(sg.Guid, sg.Flags, value);
+            return new ShortGuid<TFlags>(sg.Guid, sg.Flags, sg.Timestamp, value);
         }
 
         public override string ToString() => Value;

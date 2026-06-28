@@ -98,6 +98,27 @@ namespace Tests.SrtGuid.Core
         }
 
         [Fact]
+        public void Can_Deconstruct_And_Reconstruct_Timestamp()
+        {
+            var guid = Guid.NewGuid();
+            var flags = 42;
+
+            var (sgGuid, sgFlags, sgTimestamp, sgValue) = ShortGuid.NewGuid(guid, flags);
+            var sg = ShortGuid.NewGuid(sgValue);
+
+            Assert.Equal(guid, sgGuid);
+            Assert.Equal(flags, sgFlags);
+            Assert.Null(sgTimestamp);
+
+            Assert.Equal(sgGuid, sg.Guid);
+            Assert.Equal(sgFlags, sg.Flags);
+            Assert.Equal(sgValue, sg.Value);
+
+            Assert.Equal(sg, ShortGuid.NewGuid(sgGuid));
+            Assert.Equal(sg, ShortGuid.NewGuid(sgGuid, sgFlags));
+        }
+
+        [Fact]
         public void Parse_ShortGuid()
         {
             var guid = Guid.NewGuid();
@@ -310,19 +331,22 @@ namespace Tests.SrtGuid.Core
         }
 
         [Fact]
-        public void Can_Deconstruct_And_Reconstruct_V7()
+        public void Can_Deconstruct_And_Reconstruct_V7_Timestamp()
         {
-            var guid = Guid.CreateVersion7();
+            var utc = DateTimeOffset.UtcNow;
+            var guid = Guid.CreateVersion7(utc);
             var flags = 42;
 
-            var (sgGuid, sgFlags, sgValue) = ShortGuid.CreateVersion7(guid, flags);
+            var (sgGuid, sgFlags, sgTimestamp, sgValue) = ShortGuid.CreateVersion7(guid, flags);
             var sg = ShortGuid.CreateVersion7(sgValue);
 
             Assert.Equal(guid, sgGuid);
             Assert.Equal(flags, sgFlags);
+            Assert.Equal(utc.ToUnixTimeMilliseconds(), sgTimestamp.Value.ToUnixTimeMilliseconds());
 
             Assert.Equal(sgGuid, sg.Guid);
             Assert.Equal(sgFlags, sg.Flags);
+            Assert.Equal(sgTimestamp.Value.ToUnixTimeMilliseconds(), sg.Timestamp.Value.ToUnixTimeMilliseconds());
             Assert.Equal(sgValue, sg.Value);
 
             Assert.Equal(sg, ShortGuid.CreateVersion7(sgGuid));
@@ -454,6 +478,25 @@ namespace Tests.SrtGuid.Core
             var delta = Math.Abs(utc.ToUnixTimeMilliseconds() - sg.Timestamp.Value.ToUnixTimeMilliseconds());
 
             Assert.Equal(0L, delta); // Exact match (to the millisecond), no time drift.
+        }
+
+        [Fact]
+        public void Timestamp_V7_CreatedDate_Exact_Reconstruction()
+        {
+            var utc = DateTimeOffset.UtcNow;
+            var guid = Guid.CreateVersion7(utc);
+
+            var sg1 = new ShortGuid(guid);
+            var delta1 = Math.Abs(utc.ToUnixTimeMilliseconds() - sg1.Timestamp.Value.ToUnixTimeMilliseconds());
+
+            var sg2 = new ShortGuid(sg1.Value, ShortGuidVersion.Version7);
+            var delta2 = Math.Abs(utc.ToUnixTimeMilliseconds() - sg2.Timestamp.Value.ToUnixTimeMilliseconds());
+
+            var delta3 = Math.Abs(sg1.Timestamp.Value.ToUnixTimeMilliseconds() - sg2.Timestamp.Value.ToUnixTimeMilliseconds());
+
+            Assert.Equal(0L, delta1);
+            Assert.Equal(0L, delta2);
+            Assert.Equal(0L, delta3);
         }
     }
 }
