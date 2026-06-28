@@ -114,5 +114,35 @@ namespace Tests.SrtGuid.Core
         [InlineData("AAAAAAAAAAAAAAAAAAAAAAA")] // Too Long.
         [InlineData("AAAAAAAAAAAAAAAAAAAAA%")] // Invalid base64 character.
         public void ToGuid_Guid(string sg) => Assert.Throws<ArgumentOutOfRangeException>(() => sg.ToGuid());
+
+        [Fact]
+        public void ToVersion7_Convert_FromVersion4()
+        {
+            var v4 = Guid.NewGuid();
+
+            var v7 = v4.ToVersion7();
+
+            Assert.Equal(7, v7.Version);
+            Assert.Equal(4, v7.ToVersion4().Version);
+        }
+
+        [Fact]
+        public void ToVersion4_Convert_FromVersion7()
+        {
+            var v7 = Guid.CreateVersion7();
+
+            var v4 = v7.ToVersion4();
+
+            Assert.Equal(4, v4.Version);
+            Assert.Equal(7, v4.ToVersion7().Version);
+        }
+
+        [Fact] public void IsEmpty_Guid() => Assert.True(Guid.Empty.IsEmpty());
+        [Fact] public void IsEmpty_ShortGuid() => Assert.True(ShortGuid.Empty.IsEmpty());
+        [Fact] public void IsEmpty_ShortGuidVersion7() => Assert.True(ShortGuid.EmptyVersion7.IsEmpty());
+
+        [Fact] public void IsNotEmpty_Guid() => Assert.False(Guid.NewGuid().IsEmpty());
+        [Fact] public void IsNotEmpty_ShortGuid() => Assert.False(ShortGuid.NewGuid().Guid.IsEmpty());
+        [Fact] public void IsNotEmpty_ShortGuidVersion7() => Assert.False(ShortGuid.CreateVersion7().Guid.IsEmpty());
     }
 }

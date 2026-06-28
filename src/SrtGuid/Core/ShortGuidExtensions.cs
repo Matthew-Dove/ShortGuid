@@ -27,7 +27,8 @@ namespace SrtGuid.Core
         private const byte MASK_FIVE_AND_SIX = 0b00110000; // Get positions 5, and 6 of a byte (reading from the lowest bit - right to left).
         private const byte MASK_FIRST_FOUR = 0b11110000; // Get the first 4 bits in a byte.
         private const byte MASK_FIRST_TWO = 0b11000000; // Get the first 2 bits in a byte.
-        private const byte MASK_VERSION = 0b01000000; // The first 4 bits of the version byte are: "0100".
+        private const byte MASK_VERSION_4 = 0b01000000; // The first 4 bits of the version 4 byte are: "0100".
+        private const byte MASK_VERSION_7 = 0b01110000; // The first 4 bits of the version 7 byte are: "0111".
         private const byte MASK_VARIANT = 0b10000000; // The first 2 bits of the variant byte are: "10".
 
         // Flag constraints.
@@ -38,8 +39,7 @@ namespace SrtGuid.Core
         /// <summary>Creates a ShortGuid using the provided Guid, and Flags.</summary>
         public static string ToShortGuid(this Guid guid, int flags)
         {
-            if (Guid.Empty.Equals(guid)) Throw.ArgumentOutOfRangeException(nameof(guid), guid, "The guid cannot be empty.");
-            if (ShortGuid.Empty.Equals(guid)) Throw.ArgumentOutOfRangeException(nameof(guid), guid, "The guid cannot be an empty ShortGuid.");
+            if (guid.IsEmpty()) Throw.ArgumentOutOfRangeException(nameof(guid), guid, "The guid cannot be an empty ShortGuid.");
             if (flags < FLAGS_MIN || flags > FLAGS_MAX) Throw.ArgumentOutOfRangeException(nameof(flags), flags, "Value must exist between [0, 63] (inclusive).");
             return CreateShortGuid(guid, (byte)flags);
         }
@@ -72,8 +72,8 @@ namespace SrtGuid.Core
             guid.TryWriteBytes(guidBytes);
 
             // Pack 6 bits from flags (0 - 63), into the version, and variant guid bytes.
-            var version = guidBytes[7]; // The first 4 bits of the 8th byte in a V4 Guid are: 0100 (or 4 in hex).
-            var variant = guidBytes[8]; // The first 2 bits of the 9th byte in a V4 Guid are: 10 (or between 8, and b in hex - depending on the last 2 bits).
+            var version = guidBytes[7]; // The first 4 bits of the 8th byte in a V4 Guid are: 0100 (or 4 in hex); and V7 Guid is: 0111 (or 7 in hex).
+            var variant = guidBytes[8]; // The first 2 bits of the 9th byte in a V4, and V7 Guid are: 10 (or between 8, and b in hex - depending on the last 2 bits).
 
             // Pack 4 bits from flags into the version byte.
             var versionLast4 = (byte)(version & MASK_LAST_FOUR); // Get the last 4 bits of the version byte.
@@ -108,8 +108,14 @@ namespace SrtGuid.Core
             });
         }
 
-        /// <summary>Extracts the Guid, and Flags from the ShortGuid.</summary>
-        public static bool TryParseToGuid(this string shortGuid, out (Guid Guid, int Flags) guid)
+        /// <summary>Extracts the Guid, and Flags from the ShortGuid in a safe way.</summary>
+        public static bool TryParseToGuid(this string shortGuid, out (Guid Guid, int Flags) guid) => TryParseToGuid(shortGuid, MASK_VERSION_4, out guid);
+
+        /// <summary>Extracts the Guid, and Flags from the ShortGuid in a safe way.</summary>
+        public static bool TryParseToGuidVersion7(this string shortGuid, out (Guid Guid, int Flags) guid) => TryParseToGuid(shortGuid, MASK_VERSION_7, out guid);
+
+        /// <summary>Extracts the Guid, and Flags from the ShortGuid in a safe way.</summary>
+        private static bool TryParseToGuid(string shortGuid, byte maskVersion, out (Guid Guid, int Flags) guid)
         {
             guid = (Guid.Empty, default(int));
 
@@ -144,16 +150,23 @@ namespace SrtGuid.Core
             // If we get this far, the only likely remaining error would be having an empty ShortGuid value (which would have to be crafted maliciously).
             // We need to parse it to find that out though.
 
-            try { guid = shortGuid.ToGuid(); }
+            try { guid = ExtractGuid(shortGuid, maskVersion); }
             catch { return false; }
 
             return true;
         }
 
-        public static bool TryParseToGuid<TFlags>(this string shortGuid, out (Guid Guid, TFlags Flags) guid) where TFlags : Enum, IConvertible
+        /// <summary>Extracts the Guid, and Flags from the ShortGuid in a safe way.</summary>
+        public static bool TryParseToGuid<TFlags>(this string shortGuid, out (Guid Guid, TFlags Flags) guid) where TFlags : Enum, IConvertible => TryParseToGuid<TFlags>(shortGuid, MASK_VERSION_4, out guid);
+
+        /// <summary>Extracts the Guid, and Flags from the ShortGuid in a safe way.</summary>
+        public static bool TryParseToGuidVersion7<TFlags>(this string shortGuid, out (Guid Guid, TFlags Flags) guid) where TFlags : Enum, IConvertible => TryParseToGuid<TFlags>(shortGuid, MASK_VERSION_7, out guid);
+
+        /// <summary>Extracts the Guid, and Flags from the ShortGuid in a safe way.</summary>
+        private static bool TryParseToGuid<TFlags>(string shortGuid, byte maskVersion, out (Guid Guid, TFlags Flags) guid) where TFlags : Enum, IConvertible
         {
             guid = (Guid.Empty, default(TFlags));
-            if (TryParseToGuid(shortGuid, out var result))
+            if (TryParseToGuid(shortGuid, maskVersion, out var result))
             {
                 var flags = ConvertToFlagsEnum<TFlags>(result.Flags);
                 guid = (result.Guid, flags);
@@ -163,24 +176,26 @@ namespace SrtGuid.Core
         }
 
         /// <summary>Extracts the Guid, and Flags from the ShortGuid.</summary>
-        public static (Guid Guid, int Flags) ToGuid(this string shortGuid)
-        {
-            if (shortGuid?.Length != BASE64_LENGTH) Throw.ArgumentOutOfRangeException(nameof(shortGuid), shortGuid?.Length ?? 0, "Length must be exactly 22.");
-            return ExtractGuid(shortGuid);
-        }
+        public static (Guid Guid, TFlags Flags) ToGuid<TFlags>(this string shortGuid) where TFlags : Enum, IConvertible => ToGuid<TFlags>(shortGuid, MASK_VERSION_4);
 
         /// <summary>Extracts the Guid, and Flags from the ShortGuid.</summary>
-        public static (Guid Guid, TFlags Flags) ToGuid<TFlags>(this string shortGuid) where TFlags : Enum, IConvertible
+        public static (Guid Guid, TFlags Flags) ToGuidVersion7<TFlags>(this string shortGuid) where TFlags : Enum, IConvertible => ToGuid<TFlags>(shortGuid, MASK_VERSION_7);
+
+        /// <summary>Extracts the Guid, and Flags from the ShortGuid.</summary>
+        private static (Guid Guid, TFlags Flags) ToGuid<TFlags>(string shortGuid, byte maskVersion) where TFlags : Enum, IConvertible
         {
-            var (g, f) = ToGuid(shortGuid);
+            var (g, f) = ExtractGuid(shortGuid, maskVersion);
             var flags = ConvertToFlagsEnum<TFlags>(f);
             return (g, flags);
         }
 
-        /// <summary>
-        /// Flags only exists the range of 0 - 63, but the underlying enum implementation could be any numeric data type.
-        /// <para>i.e. byte, sbyte, short, ushort, int, uint, long, or ulong.</para>
-        /// </summary>
+        /// <summary>Extracts the Guid, and Flags from the ShortGuid.</summary>
+        public static (Guid Guid, int Flags) ToGuid(this string shortGuid) => ExtractGuid(shortGuid, MASK_VERSION_4);
+
+        /// <summary>Extracts the Guid, and Flags from the ShortGuid.</summary>
+        public static (Guid Guid, int Flags) ToGuidVersion7(this string shortGuid) => ExtractGuid(shortGuid, MASK_VERSION_7);
+
+        /// <summary>Flags only exists the range of 0 - 63, but the underlying enum implementation could be any numeric data type.</summary>
         private static TFlags ConvertToFlagsEnum<TFlags>(int flags) where TFlags : Enum, IConvertible
         {
             if (Unsafe.SizeOf<TFlags>() == 1)
@@ -216,8 +231,10 @@ namespace SrtGuid.Core
          * 4) Combine the flags data back into a single byte, and re-create the guid.
         **/
 
-        private static (Guid Guid, int Flags) ExtractGuid(string shortGuid)
+        private static (Guid Guid, int Flags) ExtractGuid(string shortGuid, byte maskVersion)
         {
+            if (shortGuid?.Length != BASE64_LENGTH) Throw.ArgumentOutOfRangeException(nameof(shortGuid), shortGuid?.Length ?? 0, "Length must be exactly 22.");
+
             // String to UTF-8 bytes.
             Span<byte> encodedBytes = stackalloc byte[BASE64_PADDING_LENGTH];
             byte[] utf8Bytes = Encoding.UTF8.GetBytes(shortGuid);
@@ -246,7 +263,7 @@ namespace SrtGuid.Core
             var versionFirst4 = (byte)(version & MASK_FIRST_FOUR); // Get the first 4 bits of the version byte.
             var versionBitShift = (byte)(versionFirst4 >> 4); // Shift the flag bits all the way to the right.
             var versionLast4 = (byte)(version & MASK_LAST_FOUR); // Get the last 4 bits of the version byte.
-            var versionResult = (byte)(versionLast4 | MASK_VERSION); // Set the first 4 bits of the version byte to "0100".
+            var versionResult = (byte)(versionLast4 | maskVersion); // Set the first 4 bits of the version byte (0100 for V4, or 0111 for V7).
 
             // Extract 2 flag bits from the variant byte.
             var variantFirst2 = (byte)(variant & MASK_FIRST_TWO); // Get the first 2 bits of the variant byte.
@@ -262,8 +279,51 @@ namespace SrtGuid.Core
 
             // Convert the bytes into a GUID.
             var guid = MemoryMarshal.Read<Guid>(guidBytes);
-            if (ShortGuid.Empty.Equals(guid)) Throw.ArgumentOutOfRangeException(nameof(shortGuid), guid, "ShortGuid cannot be empty.");
+            if (guid.IsEmpty()) Throw.ArgumentOutOfRangeException(nameof(shortGuid), guid, "ShortGuid cannot be empty.");
             return (guid, flags);
+        }
+
+        /// <summary>Set the Guid's version to 7.</summary>
+        public static Guid ToVersion7(this Guid guid)
+        {
+            if (guid.Version == 7) return guid;
+
+            Span<byte> guidBytes = stackalloc byte[16];
+            guid.TryWriteBytes(guidBytes);
+
+            // Set version to 7 (replace bits 48-51 with "0111").
+            guidBytes[7] = (byte)((guidBytes[7] & 0x0F) | 0x70);
+
+            // Set variant (bits 64-65 with "10").
+            guidBytes[8] = (byte)((guidBytes[8] & 0x3F) | 0x80);
+
+            return MemoryMarshal.Read<Guid>(guidBytes);
+        }
+
+        /// <summary>Set the Guid's version to 4.</summary>
+        public static Guid ToVersion4(this Guid guid)
+        {
+            if (guid.Version == 4) return guid;
+
+            Span<byte> guidBytes = stackalloc byte[16];
+            guid.TryWriteBytes(guidBytes);
+
+            // Set version to 4 (replace bits 48-51 with "0100").
+            guidBytes[7] = (byte)((guidBytes[7] & 0x0F) | 0x40);
+
+            // Set variant (bits 64-65 with "10").
+            guidBytes[8] = (byte)((guidBytes[8] & 0x3F) | 0x80);
+
+            return MemoryMarshal.Read<Guid>(guidBytes);
+        }
+
+        /// <summary>Returns true if the Guid is empty, or if it has an empty V4, or V7 ShortGuid value.</summary>
+        public static bool IsEmpty(this Guid guid)
+        {
+            if (guid.Version == 4) return guid.Equals(ShortGuid.Empty);
+            if (guid.Version == 7) return guid.Equals(ShortGuid.EmptyVersion7);
+
+            return guid.Equals(Guid.Empty);
         }
     }
 }

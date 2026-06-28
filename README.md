@@ -91,3 +91,4 @@ Assert.Equal(flagsIn, flagsOut);
 ## 2.0.0
 
 * Updated framework to dotnet 10.
+* Added support for V7 Guids.

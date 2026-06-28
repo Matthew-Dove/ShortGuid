@@ -14,6 +14,12 @@ namespace SrtGuid.Core
         /// </summary>
         public static readonly Guid Empty = ShortGuid.Empty;
 
+        /// <summary>
+        /// The "empty" instance of a ShortGuid contains the version, and variant markers in their respective bytes.
+        /// <para>i.e. "00000000-0000-7000-8000-000000000000".</para>
+        /// </summary>
+        public static readonly Guid EmptyVersion7 = ShortGuid.EmptyVersion7;
+
         /// <summary>A ShortGuid instance to use when initialization fails.</summary>
         private static readonly ShortGuid<TFlags> _default = new ShortGuid<TFlags>(Guid.Empty, default(TFlags), default(string));
 
@@ -27,9 +33,12 @@ namespace SrtGuid.Core
         public string Value { get; }
 
         /// <summary>Creates a ShortGuid, from a base64 encoded, url safe string.</summary>
-        public ShortGuid(string value)
+        public ShortGuid(string value) : this(value, ShortGuidVersion.Version4) { }
+
+        /// <summary>Creates a ShortGuid, from a base64 encoded, url safe string.</summary>
+        public ShortGuid(string value, ShortGuidVersion version)
         {
-            var sg = value.ToGuid<TFlags>();
+            var sg = version == ShortGuidVersion.Version7 ? value.ToGuidVersion7<TFlags>() : value.ToGuid<TFlags>();
             Guid = sg.Guid;
             Flags = sg.Flags;
             Value = value;
@@ -60,6 +69,7 @@ namespace SrtGuid.Core
             Value = sg;
         }
 
+        /// <summary>Get out the Guid, and flags contained in the ShortGuid.</summary>
         public void Deconstruct(out Guid guid, out TFlags flags, out string value)
         {
             guid = Guid;
@@ -85,6 +95,9 @@ namespace SrtGuid.Core
         /// <summary>Parses a ShortGuid value.</summary>
         public static ShortGuid<TFlags> Parse(string value) => new ShortGuid<TFlags>(value);
 
+        /// <summary>Parses a ShortGuid value.</summary>
+        public static ShortGuid<TFlags> ParseVersion7(string value) => new ShortGuid<TFlags>(value, ShortGuidVersion.Version7);
+
         /// <summary>Parses a ShortGuid value, in a safe manner.</summary>
         public static bool TryParse(string value, out ShortGuid<TFlags> shortGuid)
         {
@@ -95,6 +108,43 @@ namespace SrtGuid.Core
                 return true;
             }
             return false;
+        }
+
+        /// <summary>Parses a ShortGuid value, in a safe manner.</summary>
+        public static bool TryParseVersion7(string value, out ShortGuid<TFlags> shortGuid)
+        {
+            shortGuid = _default;
+            if (value.TryParseToGuidVersion7<TFlags>(out (Guid Guid, TFlags Flags) guid))
+            {
+                shortGuid = new ShortGuid<TFlags>(guid.Guid, guid.Flags, value);
+                return true;
+            }
+            return false;
+        }
+
+        /// <summary>Creates a ShortGuid, generating a new Version 7 Guid.</summary>
+        public static ShortGuid<TFlags> CreateVersion7() => new ShortGuid<TFlags>(Guid.CreateVersion7());
+
+        /// <summary>Creates a ShortGuid, with a Version 7 Guid.</summary>
+        public static ShortGuid<TFlags> CreateVersion7(Guid guid) => new ShortGuid<TFlags>(guid);
+
+        /// <summary>Creates a ShortGuid, generating a new Version 7 Guid with a Unix Epoch timestamp.</summary>
+        public static ShortGuid<TFlags> CreateVersion7(DateTimeOffset timestamp) => new ShortGuid<TFlags>(Guid.CreateVersion7(timestamp));
+
+        /// <summary>Creates a ShortGuid, generating a new Version 7 Guid, with flags.</summary>
+        public static ShortGuid<TFlags> CreateVersion7(TFlags flags) => new ShortGuid<TFlags>(Guid.CreateVersion7(), flags);
+
+        /// <summary>Creates a ShortGuid, generating a new Version 7 Guid, with a Unix Epoch timestamp and flags.</summary>
+        public static ShortGuid<TFlags> CreateVersion7(Guid guid, TFlags flags) => new ShortGuid<TFlags>(guid, flags);
+
+        /// <summary>Creates a ShortGuid, generating a new Version 7 Guid, with a Unix Epoch timestamp and flags.</summary>
+        public static ShortGuid<TFlags> CreateVersion7(DateTimeOffset timestamp, TFlags flags) => new ShortGuid<TFlags>(Guid.CreateVersion7(timestamp), flags);
+
+        /// <summary>Creates a ShortGuid, from a base64 encoded, url safe string.</summary>
+        public static ShortGuid<TFlags> CreateVersion7(string value)
+        {
+            var sg = value.ToGuidVersion7<TFlags>();
+            return new ShortGuid<TFlags>(sg.Guid, sg.Flags, value);
         }
 
         public override string ToString() => Value;

@@ -196,5 +196,198 @@ namespace Tests.SrtGuid.Core
             Assert.NotEqual(ShortGuid.Empty, sg2.Guid);
             Assert.Equal(SG_VALUE_LEN, sg2.Value.Length);
         }
+
+        // Version 7 Guid Tests.
+
+        [Fact]
+        public void Create_V7_WithDefaults()
+        {
+            var sg1 = ShortGuid.CreateVersion7();
+            var sg2 = new ShortGuid(sg1.Value);
+
+            Assert.NotEqual(Guid.Empty, sg2.Guid);
+            Assert.NotEqual(ShortGuid.Empty, sg2.Guid);
+            Assert.Equal(default(int), sg2.Flags);
+            Assert.Equal(SG_VALUE_LEN, sg2.Value.Length);
+        }
+
+        [Fact]
+        public void Create_V7_WithGuid()
+        {
+            var guid = Guid.CreateVersion7();
+
+            var sg1 = ShortGuid.CreateVersion7(guid);
+            var sg2 = ShortGuid.CreateVersion7(sg1.Value);
+
+            Assert.Equal(guid, sg2.Guid);
+            Assert.Equal(default(int), sg2.Flags);
+            Assert.Equal(SG_VALUE_LEN, sg2.Value.Length);
+        }
+
+        [Fact]
+        public void Create_V7_WithFlags()
+        {
+            var flags = 42;
+
+            var sg1 = ShortGuid.CreateVersion7(flags);
+            var sg2 = new ShortGuid(sg1.Value);
+
+            Assert.NotEqual(Guid.Empty, sg2.Guid);
+            Assert.NotEqual(ShortGuid.Empty, sg2.Guid);
+            Assert.Equal(flags, sg2.Flags);
+            Assert.Equal(SG_VALUE_LEN, sg2.Value.Length);
+        }
+
+        [Fact]
+        public void Create_V7_WithGuidAndFlags()
+        {
+            var guid = Guid.CreateVersion7();
+            var flags = 42;
+
+            var sg1 = new ShortGuid(guid, flags);
+            var sg2 = ShortGuid.CreateVersion7(sg1.Value);
+
+            Assert.Equal(guid, sg2.Guid);
+            Assert.Equal(flags, sg2.Flags);
+            Assert.Equal(SG_VALUE_LEN, sg2.Value.Length);
+        }
+
+        [Fact]
+        public void Can_Deconstruct_And_Reconstruct_V7()
+        {
+            var guid = Guid.CreateVersion7();
+            var flags = 42;
+
+            var (sgGuid, sgFlags, sgValue) = ShortGuid.CreateVersion7(guid, flags);
+            var sg = ShortGuid.CreateVersion7(sgValue);
+
+            Assert.Equal(guid, sgGuid);
+            Assert.Equal(flags, sgFlags);
+
+            Assert.Equal(sgGuid, sg.Guid);
+            Assert.Equal(sgFlags, sg.Flags);
+            Assert.Equal(sgValue, sg.Value);
+
+            Assert.Equal(sg, ShortGuid.CreateVersion7(sgGuid));
+            Assert.Equal(sg, ShortGuid.CreateVersion7(sgGuid, sgFlags));
+        }
+
+        [Fact]
+        public void Parse_V7_ShortGuid()
+        {
+            var guid = Guid.CreateVersion7();
+            var flags = 42;
+
+            var sg1 = new ShortGuid(guid, flags);
+            var sg2 = ShortGuid.ParseVersion7(sg1.Value);
+
+            Assert.Equal(guid, sg2.Guid);
+            Assert.Equal(flags, sg2.Flags);
+        }
+
+        [Fact]
+        public void TryParse_V7_ShortGuid_Ok()
+        {
+            var guid = Guid.CreateVersion7();
+            var flags = 42;
+
+            var sg1 = new ShortGuid(guid, flags);
+            var isValid = ShortGuid.TryParseVersion7(sg1.Value, out ShortGuid sg2);
+
+            Assert.True(isValid);
+            Assert.Equal(guid, sg2.Guid);
+            Assert.Equal(flags, sg2.Flags);
+        }
+
+        [Fact]
+        public void TryParse_V7_ShortGuid_EmptyFail()
+        {
+            var xxx = ShortGuid.Empty;
+            var yyy = ShortGuid.EmptyVersion7;
+
+
+            var sg = "AAAAAAAAAAAAAAAAAAAAAA"; // An encoded empty guid.
+
+            var isValid = ShortGuid.TryParseVersion7(sg, out ShortGuid _);
+
+            Assert.False(isValid);
+        }
+
+        [Fact]
+        public void Empty_V7_ShortGuid()
+        {
+            var empty = ShortGuid.EmptyVersion7.ToString("D");
+
+            Assert.Equal("00000000-0000-7000-8000-000000000000", empty);
+        }
+
+        [Fact]
+        public void Equals_V7_ShortGuid_Guid()
+        {
+            var guid = Guid.CreateVersion7();
+
+            var sg1 = new ShortGuid(guid);
+            var sg2 = new ShortGuid(sg1.Value, ShortGuidVersion.Version7);
+
+            Assert.True(sg1 == guid);
+            Assert.True(sg1 == sg2);
+            Assert.True(guid == sg2);
+        }
+
+        [Fact]
+        public void ToString_V7_ShortGuid()
+        {
+            var guid = Guid.CreateVersion7();
+            var sg = ShortGuid.CreateVersion7(guid);
+
+            Assert.Equal(guid.ToString("N"), sg.ToString(ShortGuidFormat.N));
+            Assert.Equal(guid.ToString("D"), sg.ToString(ShortGuidFormat.D));
+            Assert.Equal(guid.ToString("B"), sg.ToString(ShortGuidFormat.B));
+            Assert.Equal(guid.ToString("P"), sg.ToString(ShortGuidFormat.P));
+            Assert.Equal(guid.ToString("X"), sg.ToString(ShortGuidFormat.X));
+        }
+
+        [Theory]
+        [InlineData(Flags.A)]
+        [InlineData(Flags.G)]
+        [InlineData(Flags.A | Flags.B | Flags.C | Flags.D | Flags.E | Flags.F | Flags.G)]
+        public void ShortGuidEnum_V7_Flags(Flags flags)
+        {
+            var sg1 = new ShortGuid<Flags>(Guid.CreateVersion7(), flags);
+            var sg2 = new ShortGuid<Flags>(sg1.Value);
+
+            Assert.Equal(flags, sg2.Flags);
+            Assert.NotEqual(Guid.Empty, sg2.Guid);
+            Assert.NotEqual(ShortGuid.EmptyVersion7, sg2.Guid);
+            Assert.Equal(SG_VALUE_LEN, sg2.Value.Length);
+        }
+
+        [Theory]
+        [InlineData(Values.A)]
+        [InlineData(Values.Z)]
+        public void ShortGuidEnum_V7_Values(Values values)
+        {
+            var sg1 = new ShortGuid<Values>(Guid.CreateVersion7(), values);
+            var sg2 = new ShortGuid<Values>(sg1.Value);
+
+            Assert.Equal(values, sg2.Flags);
+            Assert.NotEqual(Guid.Empty, sg2.Guid);
+            Assert.NotEqual(ShortGuid.EmptyVersion7, sg2.Guid);
+            Assert.Equal(SG_VALUE_LEN, sg2.Value.Length);
+        }
+
+
+        // TODO: Assert V4, and V7 varients.
+
+
+
+
+
+        // TODO: Extract out the time for a V7 ShortGuid.
+        // V7: 019f0d88-39b5-778f-91b6-5dbb61d82c7d
+        // var timestamp = Convert.ToInt64("019f0d88{-}39b5", 16);
+        // var date = DateTimeOffset.FromUnixTimeMilliseconds(timestamp);
+
+
     }
 }
