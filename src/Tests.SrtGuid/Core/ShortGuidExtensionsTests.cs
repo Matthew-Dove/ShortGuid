@@ -144,5 +144,73 @@ namespace Tests.SrtGuid.Core
         [Fact] public void IsNotEmpty_Guid() => Assert.False(Guid.NewGuid().IsEmpty());
         [Fact] public void IsNotEmpty_ShortGuid() => Assert.False(ShortGuid.NewGuid().Guid.IsEmpty());
         [Fact] public void IsNotEmpty_ShortGuidVersion7() => Assert.False(ShortGuid.CreateVersion7().Guid.IsEmpty());
+
+        [Fact]
+        public void GetVersion7Timestamp_MustBeVersion7()
+        {
+            var guid = Guid.NewGuid();
+
+            Assert.Throws<ArgumentOutOfRangeException>(() => guid.GetTimestampFromVersion7());
+        }
+
+        [Fact]
+        public void GetVersion7Timestamp_NotEmpty()
+        {
+            var guid = ShortGuid.EmptyVersion7;
+
+            Assert.Throws<ArgumentOutOfRangeException>(() => guid.GetTimestampFromVersion7());
+        }
+
+        [Fact]
+        public void GetVersion7Timestamp_Utc()
+        {
+            var utc = DateTimeOffset.UtcNow;
+            var guid = Guid.CreateVersion7();
+
+            var timestamp = guid.GetTimestampFromVersion7();
+            var delta = Math.Abs((utc - timestamp).TotalMilliseconds);
+
+            Assert.True(delta < 9000); // Allow for some time drift between instructions being ran.
+        }
+
+        [Fact]
+        public void GetVersion7Timestamp_Utc_Exact()
+        {
+            var utc = DateTimeOffset.UtcNow;
+            var guid = Guid.CreateVersion7(utc);
+
+            var timestamp = guid.GetTimestampFromVersion7();
+            var delta = Math.Abs(utc.ToUnixTimeMilliseconds() - timestamp.ToUnixTimeMilliseconds());
+
+            Assert.Equal(0L, delta); // Exact match (to the millisecond), no time drift.
+        }
+
+        [Fact]
+        public void GetVersion7Timestamp_TimeZone()
+        {
+            var timeZone = TimeZoneInfo.FindSystemTimeZoneById("Australia/Sydney");
+            var utc = DateTimeOffset.UtcNow;
+            var sydney = TimeZoneInfo.ConvertTime(utc, timeZone);
+            var guid = Guid.CreateVersion7();
+
+            var timestamp = guid.GetTimestampFromVersion7(timeZone);
+            var delta = Math.Abs((sydney - timestamp).TotalMilliseconds);
+
+            Assert.True(delta < 9000); // Allow for some time drift between instructions being ran.
+        }
+
+        [Fact]
+        public void GetVersion7Timestamp_TimeZone_Exact()
+        {
+            var timeZone = TimeZoneInfo.FindSystemTimeZoneById("Australia/Sydney");
+            var utc = DateTimeOffset.UtcNow;
+            var sydney = TimeZoneInfo.ConvertTime(utc, timeZone);
+            var guid = Guid.CreateVersion7(utc);
+
+            var timestamp = guid.GetTimestampFromVersion7(timeZone);
+            var delta = Math.Abs(utc.ToUnixTimeMilliseconds() - timestamp.ToUnixTimeMilliseconds());
+
+            Assert.Equal(0L, delta); // Exact match (to the millisecond), no time drift.
+        }
     }
 }

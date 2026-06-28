@@ -421,12 +421,5 @@ namespace Tests.SrtGuid.Core
             Assert.NotEqual(ShortGuid.EmptyVersion7, sg2.Guid);
             Assert.Equal(SG_VALUE_LEN, sg2.Value.Length);
         }
-
-        // TODO: Extract out the time for a V7 ShortGuid.
-        // V7: 019f0d88-39b5-778f-91b6-5dbb61d82c7d
-        // var timestamp = Convert.ToInt64("019f0d88{-}39b5", 16);
-        // var date = DateTimeOffset.FromUnixTimeMilliseconds(timestamp);
-
-
     }
 }

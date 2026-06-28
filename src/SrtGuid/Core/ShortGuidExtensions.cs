@@ -326,5 +326,32 @@ namespace SrtGuid.Core
 
             return guid.Equals(Guid.Empty);
         }
+
+        /// <summary>Gets the Unix timestamp from the Guid in UTC.</summary>
+        public static DateTimeOffset GetTimestampFromVersion7(this Guid guid)
+        {
+            if (guid.Version != 7) Throw.ArgumentOutOfRangeException(nameof(guid), guid, "Guid must be version 7.");
+            if (guid.Equals(ShortGuid.EmptyVersion7)) Throw.ArgumentOutOfRangeException(nameof(guid), guid, "The guid cannot be empty.");
+
+            var bytes = MemoryMarshal.AsBytes(MemoryMarshal.CreateReadOnlySpan(ref guid, 1));
+
+            var unixMilliseconds =
+                ((long)bytes[3] << 40) |
+                ((long)bytes[2] << 32) |
+                ((long)bytes[1] << 24) |
+                ((long)bytes[0] << 16) |
+                ((long)bytes[5] << 8) |
+                bytes[4]
+            ;
+
+            return DateTimeOffset.FromUnixTimeMilliseconds(unixMilliseconds);
+        }
+
+        /// <summary>Gets the Unix timestamp from the Guid in the TimeZone provided.</summary>
+        public static DateTimeOffset GetTimestampFromVersion7(this Guid guid, TimeZoneInfo timeZone)
+        {
+            var timestamp = GetTimestampFromVersion7(guid);
+            return TimeZoneInfo.ConvertTime(timestamp, timeZone);
+        }
     }
 }
