@@ -215,6 +215,17 @@ namespace Tests.SrtGuid.Core
             Assert.Equal(SG_VALUE_LEN, sg2.Value.Length);
         }
 
+        [Fact]
+        public void Timestamp_CreatedDate_NotApplicable()
+        {
+            var guid = Guid.NewGuid();
+
+            var sg = new ShortGuid(guid);
+
+            Assert.Null(sg.Timestamp); // Version 4 Guids don't have a timestamp component.
+            Assert.False(sg.Timestamp.HasValue);
+        }
+
         // Version 7 Guid Tests.
 
         [Fact]
@@ -420,6 +431,29 @@ namespace Tests.SrtGuid.Core
             Assert.NotEqual(Guid.Empty, sg2.Guid);
             Assert.NotEqual(ShortGuid.EmptyVersion7, sg2.Guid);
             Assert.Equal(SG_VALUE_LEN, sg2.Value.Length);
+        }
+
+        [Fact]
+        public void Timestamp_V7_CreatedDate()
+        {
+            var guid = Guid.CreateVersion7();
+
+            var sg = new ShortGuid(guid);
+            var delta = Math.Abs((sg.Timestamp.Value - DateTimeOffset.UtcNow).TotalMilliseconds);
+
+            Assert.True(delta < 9000); // Allow for some time drift between instructions being ran.
+        }
+
+        [Fact]
+        public void Timestamp_V7_CreatedDate_Exact()
+        {
+            var utc = DateTimeOffset.UtcNow;
+            var guid = Guid.CreateVersion7(utc);
+
+            var sg = new ShortGuid(guid);
+            var delta = Math.Abs(utc.ToUnixTimeMilliseconds() - sg.Timestamp.Value.ToUnixTimeMilliseconds());
+
+            Assert.Equal(0L, delta); // Exact match (to the millisecond), no time drift.
         }
     }
 }

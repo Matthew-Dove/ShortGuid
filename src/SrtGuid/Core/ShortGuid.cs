@@ -30,6 +30,9 @@ namespace SrtGuid.Core
         /// <summary>The 6 bits available to set on the underlying Guid (0 - 63).</summary>
         public int Flags { get; }
 
+        /// <summary>The DateTimeOffset the guid was created with, only valid for version 7 Guids.</summary>
+        public DateTimeOffset? Timestamp { get; }
+
         /// <summary>The ShortGuid - a url safe, base64 encoded Guid.</summary>
         public string Value { get; }
 
@@ -42,6 +45,7 @@ namespace SrtGuid.Core
             var sg = version == ShortGuidVersion.Version7 ? value.ToGuidVersion7() : value.ToGuid();
             Guid = sg.Guid;
             Flags = sg.Flags;
+            Timestamp = version == ShortGuidVersion.Version7 ? sg.Guid.GetTimestampFromVersion7() : null;
             Value = value;
         }
 
@@ -67,6 +71,7 @@ namespace SrtGuid.Core
             var sg = guid.ToShortGuid(flags);
             Guid = guid;
             Flags = flags;
+            Timestamp = guid.Version == 7 ? guid.GetTimestampFromVersion7() : null;
             Value = sg;
         }
 
