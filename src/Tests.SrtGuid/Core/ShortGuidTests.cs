@@ -1,4 +1,6 @@
 ﻿using SrtGuid.Core;
+using System.Reflection;
+using System.Reflection.PortableExecutable;
 
 namespace Tests.SrtGuid.Core
 {

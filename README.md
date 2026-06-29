@@ -78,6 +78,31 @@ Assert.Equal(guidIn, guidOut);
 Assert.Equal(flagsIn, flagsOut);
 ```
 
+### Version 7 Guid
+
+All the same functionality as the Version 4 Guid, along with the ability to extract the datetime component.  
+
+```cs
+var state = 42;
+var now = DateTimeOffset.UtcNow;
+
+var shortGuid1 = ShortGuid.CreateVersion7(now, state); // Create V7 Guid with params.
+var shortGuid2 = ShortGuid.CreateVersion7(shortGuid1.Value); // Reconstruct the ShortGuid from the value: "AxSfASdL2KOIsU99dR4SbQ".
+
+(Guid guid, int flags, DateTimeOffset? timestamp, string value) = shortGuid2; // Extract the components from a ShortGuid.
+// guid: 019f1403-4b27-73d8-88b1-4f7d751e126d
+// flags: 42
+// timestamp: 29/06/2026 3:33:08 PM +00:00
+// value: AxSfASdL2KOIsU99dR4SbQ
+
+var areEqual = shortGuid1.Guid == shortGuid2.Guid; // True.
+areEqual = shortGuid1.Flags == shortGuid2.Flags; // True.
+areEqual = shortGuid1.Timestamp == shortGuid2.Timestamp; // True.
+areEqual = shortGuid1.Value == shortGuid2.Value; // True.
+areEqual = shortGuid1 == shortGuid2; // True.
+```
+
+
 # Credits
 * [Icon](https://www.flaticon.com/free-icon/bird_2630452) made by [Vitaly Gorbachev](https://www.flaticon.com/authors/vitaly-gorbachev) from [Flaticon](https://www.flaticon.com/)
 * [Guid Diagram Example](https://www.uuidtools.com/decode) from uuidtools.
@@ -92,3 +117,7 @@ Assert.Equal(flagsIn, flagsOut);
 
 * Updated framework to dotnet 10.
 * Added support for V7 Guids.
+
+## 2.0.1
+
+* Added datetime extraction from V7 guids.

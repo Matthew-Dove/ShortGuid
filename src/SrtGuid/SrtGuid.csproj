@@ -7,7 +7,7 @@
 		<GenerateDocumentationFile>True</GenerateDocumentationFile>
 		<PackageId>md.shortguid</PackageId>
 		<Title>Short Guid</Title>
-		<Version>2.0.0</Version>
+		<Version>2.0.1</Version>
 		<Authors>Matthew Dove</Authors>
 		<Description>A V4 GUID represented in the form of a short(er), base64-encoded, url-safe, string.
 With the option to replace version, and variant data for custom flags.
@@ -27,7 +27,9 @@ ShortGuids are url safe.</Description>
 		<RepositoryUrl>https://github.com/Matthew-Dove/ShortGuid</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
 		<PackageTags>Guid;Uuid;ShortGuid</PackageTags>
-		<PackageReleaseNotes>Updated framework to dotnet 10.</PackageReleaseNotes>
+		<PackageReleaseNotes>## 2.0.1
+
+* Added datetime extraction from V7 guids.</PackageReleaseNotes>
 		<PackageOutputPath>..//../nupkg</PackageOutputPath>
 		<PackageLicenseFile>LICENSE</PackageLicenseFile>
 		<IncludeSymbols>True</IncludeSymbols>
